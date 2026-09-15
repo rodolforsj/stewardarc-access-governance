@@ -32,7 +32,9 @@ The backend architecture baseline is a **modular monolith with a shared consiste
 
 This architecture baseline does not adopt full DDD, formal Clean Architecture, formal Hexagonal Architecture, CQRS, event sourcing or microservices.
 
-The technology stack baseline (PHP + Laravel with Eloquent, PostgreSQL, React + TypeScript + Vite, REST/JSON and Docker Compose for the local environment) is recorded in [ADR-002](adr/0002-technology-stack-baseline.md), which complements ADR-001 without changing it and does not fix versions.
+The technology stack baseline (PHP + Laravel with Eloquent, PostgreSQL, React + TypeScript + Vite, REST/JSON and Docker Compose for the local environment) is recorded in [ADR-002](adr/0002-technology-stack-baseline.md), which complements ADR-001 without changing it and deliberately did not fix versions.
+
+The executable scaffold later materialized concrete versions through Docker images and lockfiles ([compose.yaml](../../compose.yaml), [backend/Dockerfile](../../backend/Dockerfile), [backend/composer.lock](../../backend/composer.lock), [frontend/package-lock.json](../../frontend/package-lock.json)). These versions form the current executable baseline; those files remain the technical source for them.
 
 ## Known conceptual boundaries
 
@@ -48,7 +50,7 @@ Internal module organization, packages, namespaces, layers and code directories 
 
 The following are intentionally not decided:
 
-- concrete versions of the stack;
+- version update and maintenance policy for the stack;
 - deployment, including separate or joint deployment of frontend and backend, and cloud or hosting;
 - concrete authentication and session mechanism;
 - concrete source of the Governance authority;

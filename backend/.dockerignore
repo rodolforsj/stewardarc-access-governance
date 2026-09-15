@@ -1,0 +1,3 @@
+# The development image copies no project files, so the build context is kept empty.
+*
+!Dockerfile
