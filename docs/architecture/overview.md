@@ -30,7 +30,9 @@ This document records the architectural drivers, constraints and approved baseli
 
 The backend architecture baseline is a **modular monolith with a shared consistency boundary for the Access Governance domain**. See [ADR-001](adr/0001-backend-architecture-baseline.md).
 
-This baseline does not define language, framework, database, ORM, cloud, authentication protocol, session mechanism, frontend, or whether frontend and backend are deployed separately or together. It does not adopt full DDD, formal Clean Architecture, formal Hexagonal Architecture, CQRS, event sourcing or microservices.
+This architecture baseline does not adopt full DDD, formal Clean Architecture, formal Hexagonal Architecture, CQRS, event sourcing or microservices.
+
+The technology stack baseline (PHP + Laravel with Eloquent, PostgreSQL, React + TypeScript + Vite, REST/JSON and Docker Compose for the local environment) is recorded in [ADR-002](adr/0002-technology-stack-baseline.md), which complements ADR-001 without changing it and does not fix versions.
 
 ## Known conceptual boundaries
 
@@ -46,9 +48,8 @@ Internal module organization, packages, namespaces, layers and code directories 
 
 The following are intentionally not decided:
 
-- stack, language and framework;
-- database and ORM;
-- frontend, and separate or joint deployment of frontend and backend;
+- concrete versions of the stack;
+- deployment, including separate or joint deployment of frontend and backend, and cloud or hosting;
 - concrete authentication and session mechanism;
 - concrete source of the Governance authority;
 - whether a resource can have more than one Resource Owner;
@@ -56,10 +57,11 @@ The following are intentionally not decided:
 - whether `A2` is persisted or derived/materialized;
 - mechanism for time-based behavior (expiration);
 - concrete atomicity mechanism;
-- concrete concurrency and retry strategy;
-- API contracts;
+- concrete concurrency, retry and idempotency strategy;
+- detailed API contracts;
 - logical and physical data model;
 - concrete observability;
+- testing strategy;
 - CI.
 
 Each should be decided when a real need arises and recorded as an ADR when it is architecturally significant.

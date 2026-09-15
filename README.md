@@ -50,9 +50,10 @@ StewardArc governs the decision and the record of access. It is **not** an IAM p
 | [Architecture overview](docs/architecture/overview.md) | Drivers, constraints, approved baseline and open decisions. |
 | [Domain model](docs/architecture/domain-model.md) | Conceptual domain model. |
 | [ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md) | Backend architecture baseline. |
+| [ADR-002](docs/architecture/adr/0002-technology-stack-baseline.md) | Technology stack baseline. |
 
 ## About this project
 
 StewardArc is a portfolio project that treats a small, well-bounded product as a complete software engineering case study: problem framing, requirements, behavior, traceability and architecture come before implementation.
 
-Technical decisions are made deliberately and recorded when there is a real driver for them. So far, only the backend architecture baseline has been decided ([ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md)). Stack, persistence, authentication, API contracts and deployment remain open on purpose; see [open decisions](docs/architecture/overview.md#deliberately-open-decisions).
+Technical decisions are made deliberately and recorded when there is a real driver for them. So far, the backend architecture baseline ([ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md)) and the technology stack baseline ([ADR-002](docs/architecture/adr/0002-technology-stack-baseline.md)) have been decided. Authentication, consistency mechanisms, API contracts, stack versions and deployment remain open on purpose; see [open decisions](docs/architecture/overview.md#deliberately-open-decisions).
