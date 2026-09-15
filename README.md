@@ -4,7 +4,7 @@
 
 StewardArc is an engineering case study in **access request governance**. It defines a product that lets an organization record, in a traceable way, who requested which access and why, who authorized it and through which decision path, when the external grant was confirmed, how long the access is valid, whether it was revoked, and the history behind each outcome.
 
-> **Status:** documentation baseline and executable project scaffold established. No product functionality has been implemented yet.
+> **Status:** documentation baseline, executable project scaffold and initial persistence layer established. No product functionality has been implemented yet.
 
 ## The problem
 
@@ -73,7 +73,13 @@ docker compose up -d
 
 Stop the environment with `docker compose down`. Add `-v` to also remove the local database volume.
 
-No migrations are run automatically, and no domain schema exists yet.
+No migrations are run automatically. To create the initial schema described in [the data model](docs/architecture/data-model.md), run them manually:
+
+```bash
+docker compose exec backend php artisan migrate
+```
+
+The schema holds no product behavior yet: there are no endpoints, no authentication and no domain operations.
 
 ## About this project
 

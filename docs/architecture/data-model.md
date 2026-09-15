@@ -1,8 +1,8 @@
 # Initial data model
 
-This is the initial logical and physical persistence baseline of StewardArc. It documents [ADR-004](adr/0004-initial-data-model-baseline.md) and precedes the first migrations: no migration, model or table exists yet.
+This is the initial logical and physical persistence baseline of StewardArc. It documents [ADR-004](adr/0004-initial-data-model-baseline.md) and was defined before the first migrations existed.
 
-It is not a schema dump. Future migrations should be audited against this document, and this document should be updated when a later decision changes the baseline.
+It is now materialized by the backend migrations and Eloquent models. It is not a schema dump: it remains the reference against which the schema is audited, and it should be updated when a later decision changes the baseline.
 
 The conceptual model stays in [domain-model.md](domain-model.md); lifecycles and rules are described in [behavior.md](../behavior.md) and [requirements.md](../requirements.md).
 
