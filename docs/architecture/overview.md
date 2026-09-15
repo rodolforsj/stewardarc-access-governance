@@ -36,6 +36,8 @@ The technology stack baseline (PHP + Laravel with Eloquent, PostgreSQL, React + 
 
 The executable scaffold later materialized concrete versions through Docker images and lockfiles ([compose.yaml](../../compose.yaml), [backend/Dockerfile](../../backend/Dockerfile), [backend/composer.lock](../../backend/composer.lock), [frontend/package-lock.json](../../frontend/package-lock.json)). These versions form the current executable baseline; those files remain the technical source for them.
 
+The lifecycle state and persistence baseline is recorded in [ADR-003](adr/0003-lifecycle-state-and-persistence-baseline.md): the current Access Request state (`S1`–`S5`, including `S3`) is persisted; the Granted Access state (`A1`–`A3`), including expiration (`A2`), is determined from preserved functional facts, the effective validity period and time; and a functional fact and the related change of the Access Request current state are made in the same PostgreSQL transaction.
+
 ## Known conceptual boundaries
 
 - **Access Governance** is a cohesive core: access requests, decisions, grant confirmation, Granted Access, effective validity, revocation confirmation, expiration and functional history.
@@ -55,11 +57,8 @@ The following are intentionally not decided:
 - concrete authentication and session mechanism;
 - concrete source of the Governance authority;
 - whether a resource can have more than one Resource Owner;
-- whether `S3` is persisted or derived;
-- whether `A2` is persisted or derived/materialized;
-- mechanism for time-based behavior (expiration);
-- concrete atomicity mechanism;
-- concrete concurrency, retry and idempotency strategy;
+- any future proactive or operational time-based processing (`A2` is already derived from the effective validity period and time; see ADR-003);
+- concrete isolation level, locking, concurrency, retry and idempotency strategy (the conceptual transaction boundary is decided in ADR-003);
 - detailed API contracts;
 - logical and physical data model;
 - concrete observability;
