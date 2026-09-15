@@ -28,21 +28,21 @@ Definitions: [requirements.md](requirements.md) · [behavior.md](behavior.md).
 | RF-005 Record approval/rejection decision | RN04, RN05, RN06, RN08, RN09 | UC-002; Standard and Privileged flows | CA-009, CA-010, CA-011, CA-012, CA-013 |
 | RF-006 Record grant confirmation | RN07, RN10 | UC-003 | CA-014, CA-015, CA-016 |
 | RF-007 Record access revocation | — | UC-004 | CA-018 |
-| RF-008 End validity in governance by expiration | RN07 | No use case (time-based behavior) | CA-017 |
+| RF-008 End validity in governance by expiration | RN07 | No use case (time-based behavior); observed through access status in UC-005 and UC-006 | CA-017 |
 | RF-009 Consult own requests | — | UC-005 | CA-020 |
-| RF-010 Consult accesses | — | UC-006 | CA-020 |
-| RF-011 Consult request history | — | UC-006 | CA-020, CA-021 |
+| RF-010 Consult accesses | — | UC-005, UC-006 | CA-020 |
+| RF-011 Consult request history | — | UC-005, UC-006; UC-004 contributes the revocation event | CA-020, CA-021 |
 
 ## Use case coverage
 
-| Use case | Covers |
-| --- | --- |
-| UC-001 Request access | The request flow |
-| UC-002 Decide access request | Decision and approval |
-| UC-003 Confirm external access grant | Grant confirmation |
-| UC-004 Record external access revocation | External revocation |
-| UC-005 Follow my requests | Following one's own requests |
-| UC-006 Consult accesses and history | Accesses and request history |
+| Use case | Covers | Requirements |
+| --- | --- | --- |
+| UC-001 Request access | The request flow | RF-001, RF-002, RF-003 |
+| UC-002 Decide access request | Decision and approval | RF-004, RF-005 |
+| UC-003 Confirm external access grant | Grant confirmation by the Resource Owner | RF-006 |
+| UC-004 Record external access revocation | External revocation recorded by the Resource Owner | RF-007; contributes the revocation event to RF-011 |
+| UC-005 Follow my requests and accesses | The Requester's own requests, Granted Accesses and history | RF-009, RF-010, RF-011; observes RF-008 through access status |
+| UC-006 Consult accesses and history within responsibility scope | Resource Owner and Governance scopes | RF-010, RF-011; observes RF-008 through access status |
 
 `RF-008` is time-based behavior with no use case of its own. It is objectively covered by `CA-017`.
 

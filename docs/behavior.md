@@ -82,14 +82,14 @@ A Granted Access exists only after grant confirmation (`S3 → S4`).
 
 | From | To | Trigger |
 | --- | --- | --- |
-| — | `A1` | Grant confirmed; effective validity period starts |
-| `A1` | `A2` | Effective validity period ends |
-| `A1` | `A3` | External revocation is confirmed |
+| — | `A1` | Resource Owner records the grant confirmation; the effective validity period starts |
+| `A1` | `A2` | A calculable validity end is reached, in particular the Privileged validity governed by `RN07` |
+| `A1` | `A3` | Resource Owner records the confirmation of an external revocation |
 
 ```mermaid
 stateDiagram-v2
     [*] --> A1: grant confirmed (request S3 to S4)
-    A1 --> A2: validity period ends
+    A1 --> A2: calculable validity end reached
     A1 --> A3: external revocation confirmed
     A2 --> [*]
     A3 --> [*]
@@ -102,7 +102,9 @@ stateDiagram-v2
 Notes:
 
 - The effective validity period starts at grant confirmation, never at approval. Time in `S3` does not consume validity (`RN07`).
-- `A2` is a governance fact. It does not prove that a revocation happened in the target system.
+- Expiration applies when a calculable validity end exists, in particular for Privileged access (`RN07`).
+- `A1 → A2` is a governance expiration. It does not prove that a revocation happened in the target system.
+- If the revocation confirmation is recorded for an access already in `A2`, the access remains in `A2`; the confirmation is preserved as an additional history event (`CA-018`, scenario B).
 - There is no direct renewal or reactivation. A later need requires a new request.
 
 ### RF-008: expiration without a use case
@@ -129,27 +131,36 @@ Notes:
 
 ### UC-003 — Confirm external access grant
 
-- **Goal:** record that the access was granted externally for a request in `S3`.
+- **Primary actor:** Resource Owner.
+- **Secondary actors:** none. The external technical execution is not an MVP actor.
+- **Goal:** record that the access was actually granted outside the product.
+- **Preconditions:** the request is in `S3`; all required approvals are complete; the grant was actually executed outside the product.
 - **Outcome:** the request moves `S3 → S4`, the Granted Access is created in `A1` and its effective validity period starts.
 - **Rules:** `RN07`, `RN10`.
 - **Requirements:** `RF-006`.
 
 ### UC-004 — Record external access revocation
 
-- **Goal:** record that an active access was revoked externally.
-- **Outcome:** the Granted Access moves `A1 → A3`.
-- **Requirements:** `RF-007`.
+- **Primary actor:** Resource Owner.
+- **Secondary actors:** none.
+- **Goal:** record a revocation that occurred outside the product.
+- **Outcome:** an access in `A1` moves to `A3`. For an access already in `A2`, the state is unchanged and the revocation confirmation is preserved in the history (`CA-018`).
+- **Requirements:** `RF-007`; contributes the revocation event to the history consulted through `RF-011`.
 
-### UC-005 — Follow my requests
+### UC-005 — Follow my requests and accesses
 
 - **Primary actor:** Requester.
-- **Goal:** follow the state of their own requests.
-- **Requirements:** `RF-009`.
+- **Goal:** follow their own Access Requests, their Granted Accesses and the associated Functional History.
+- **Rules:** `RN07` applies when viewing the validity of a Privileged access.
+- **Requirements:** `RF-009`, `RF-010`, `RF-011`. `RF-008` is observed through the displayed status of accesses.
 
-### UC-006 — Consult accesses and history
+### UC-006 — Consult accesses and history within responsibility scope
 
-- **Goal:** consult Granted Access records and the history of requests, within the actor's functional scope.
-- **Requirements:** `RF-010`, `RF-011`.
+- **Primary actors:** Resource Owner; Governance.
+- **Goal:** consult Granted Accesses and request history within the actor's responsibility scope.
+  - The Resource Owner reads accesses and request history associated with resources under their responsibility.
+  - Governance reads accesses and request history for Privileged profiles.
+- **Requirements:** `RF-010`, `RF-011`. `RF-008` is reflected in the status of the accesses consulted.
 
 ## Acceptance criteria
 
@@ -171,8 +182,37 @@ Notes:
 | CA-014 | The request remains in `S3` while the external grant is not confirmed, without consuming validity. |
 | CA-015 | Grant confirmation before all approvals are complete is prevented. |
 | CA-016 | Grant confirmation moves the request `S3 → S4`, creates the Granted Access and starts its effective validity period. |
-| CA-017 | At the end of the validity period, the access ends by expiration, moving `A1 → A2`. |
-| CA-018 | A confirmed external revocation is recorded, moving `A1 → A3`. |
+| CA-017 | See [CA-017](#ca-017--expiration-of-a-privileged-access). |
+| CA-018 | See [CA-018](#ca-018--confirmation-of-external-revocation). |
 | CA-019 | After an access ends, a new need requires a new request; there is no direct renewal or reactivation. |
-| CA-020 | Queries respect the functional scope of the actor. |
-| CA-021 | The request history preserves the relevant lifecycle events and decisions. |
+| CA-020 | See [CA-020](#ca-020--consultation-scopes). |
+| CA-021 | See [CA-021](#ca-021--functional-history-content). |
+
+### CA-017 — Expiration of a Privileged access
+
+Given a Privileged Granted Access in `A1` with a defined duration, when its effective validity period ends, the access moves `A1 → A2` and is no longer considered active by governance. This neither implies nor records an external technical revocation.
+
+### CA-018 — Confirmation of external revocation
+
+- **Scenario A:** given an access in `A1` that was revoked externally, when the Resource Owner records the revocation confirmation, the access moves `A1 → A3`.
+- **Scenario B:** given an access already in `A2` because it expired, when an external revocation occurs and its confirmation is recorded, the access does **not** move to `A3`. It remains in `A2`, and the revocation confirmation is preserved as an additional history event.
+
+### CA-020 — Consultation scopes
+
+Queries return only what is within the actor's scope:
+
+- **Requester:** their own requests, histories and accesses.
+- **Resource Owner:** accesses tied to resources under their responsibility, and requests for those resources.
+- **Governance:** accesses of Privileged profiles, and requests for Privileged profiles.
+
+### CA-021 — Functional History content
+
+The history of a request preserves, when applicable:
+
+- approval and rejection decisions, with the responsible actor and time;
+- the rejection justification;
+- the grant confirmation, with the recording actor and time;
+- the revocation confirmation, with the recording actor and time;
+- other relevant recorded functional events.
+
+The actor recorded for a confirmation is the person who records it in StewardArc. It does not presume who technically executed the grant or the revocation externally.

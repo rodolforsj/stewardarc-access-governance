@@ -10,15 +10,15 @@ Behavior and states are described in [../behavior.md](../behavior.md); architect
 | --- | --- |
 | Resource | Something to which access is governed. |
 | Access Profile | A requestable access to a resource, classified as Standard or Privileged, and available or not for new requests. |
-| Actor Reference | The domain's reference to a person acting as Requester, Resource Owner or Governance. The authenticated identity itself is external. |
+| Actor Reference | The domain's reference to a person acting as Requester, Resource Owner or Governance. The authenticated identity itself is external. The actor of a confirmation is the person who records it, not necessarily who executed the change externally. |
 | Access Request | A user's request, for themselves, for one access profile, stating why. Follows the lifecycle `S1`–`S5`. |
 | Decision | An immutable fact in the lifecycle of an Access Request: an approval or a justified rejection by the authority of the pending step. |
 | Requested Duration | The duration stated in a Privileged request (`RN07`). |
-| Grant Confirmation | The record that the grant happened externally. It concludes the request (`S3 → S4`). |
+| Grant Confirmation | The record, made by the Resource Owner, that the grant was executed externally. It concludes the request (`S3 → S4`). |
 | Granted Access | The access that exists only after grant confirmation. Follows the lifecycle `A1`–`A3`. |
-| Effective Validity Period | The period of a Granted Access that starts at grant confirmation and ends when the requested duration elapses. |
-| Revocation Confirmation | The record that an access was revoked externally (`A1 → A3`). |
-| Expiration | The end of the effective validity period in the governance model (`A1 → A2`). It does not prove external revocation. |
+| Effective Validity Period | The period of a Granted Access that starts at grant confirmation. It has a calculable end only when applicable, in particular when a Requested Duration exists (`RN07`). |
+| Revocation Confirmation | The record, made by the Resource Owner, that an access was revoked externally. For an active access it causes `A1 → A3`; for an access already in `A2` it is preserved as a history event without changing `A2`. |
+| Expiration | The end, in the governance model, of an effective validity period that has a calculable end (`A1 → A2`). It does not prove external revocation. |
 | Functional History | A capability, projected from facts preserved by the domain, that presents a request's decisions and relevant lifecycle events. |
 
 ## Relationships
@@ -28,8 +28,10 @@ Behavior and states are described in [../behavior.md](../behavior.md); architect
 - Decisions are facts attached to the lifecycle of an Access Request.
 - A Privileged Access Request carries a Requested Duration.
 - A Grant Confirmation concludes an Access Request and originates a Granted Access.
-- A Granted Access has an Effective Validity Period that starts at grant confirmation.
-- A Granted Access ends either by Expiration or by Revocation Confirmation.
+- A Granted Access has an Effective Validity Period that starts at grant confirmation and has a calculable end only when applicable.
+- An active Granted Access ends by Expiration, when a calculable validity end is reached, or by Revocation Confirmation.
+- A Revocation Confirmation recorded for a Granted Access already ended by Expiration is preserved as a history event and does not change its state.
+- This model does not imply that every Standard access expires by duration.
 - The Functional History is derived from the preserved facts: decisions, grant confirmation, expiration and revocation confirmation.
 
 ```mermaid
@@ -56,8 +58,8 @@ flowchart LR
     Grant -- "concludes" --> Request
     Grant -- "originates" --> Access
     Access -- "has" --> Validity
-    Expiration -- "ends" --> Access
-    Revocation -- "ends" --> Access
+    Expiration -. "ends, when a calculable end exists" .-> Access
+    Revocation -- "ends if active; history event if expired" --> Access
     History -. "projected from preserved facts" .-> Request
 ```
 

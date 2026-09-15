@@ -26,17 +26,18 @@ StewardArc governs the decision and the record of access. It is **not** an IAM p
 - Access requests made by users for themselves.
 - Standard and Privileged approval flows, with decisions taken by the right authority, in sequence, without self-approval.
 - Justified rejections.
-- Confirmation of external grants, creating Granted Access records.
-- End of access by expiration or by confirmed external revocation.
-- Scoped queries over requests, accesses and request history.
+- Recording, by the Resource Owner, of the confirmation of external grants, creating Granted Access records.
+- Recording, by the Resource Owner, of the confirmation of external revocations.
+- End of temporary access in governance when its validity end is reached.
+- Queries over requests, accesses and request history, restricted to each actor's scope.
 
 ## Actors
 
 | Actor | Role in the MVP |
 | --- | --- |
-| Requester | Requests access for themselves and follows their own requests. |
-| Resource Owner | Decides requests for profiles of the resource they are responsible for. |
-| Governance | Decides Privileged requests after the Resource Owner's approval. |
+| Requester | Requests access for themselves and consults their own requests, Granted Accesses and the corresponding functional history. |
+| Resource Owner | For the resources under their responsibility: decides requests, records the confirmation of external grants and of external revocations, and consults the related accesses and request history. |
+| Governance | Takes the additional decision step for Privileged profiles and consults accesses and request history for Privileged profiles. |
 
 ## Documentation
 
