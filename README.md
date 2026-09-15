@@ -4,7 +4,7 @@
 
 StewardArc is an engineering case study in **access request governance**. It defines a product that lets an organization record, in a traceable way, who requested which access and why, who authorized it and through which decision path, when the external grant was confirmed, how long the access is valid, whether it was revoked, and the history behind each outcome.
 
-> **Status:** foundation and documentation established. Implementation has not started.
+> **Status:** documentation baseline and executable project scaffold established. No product functionality has been implemented yet.
 
 ## The problem
 
@@ -51,6 +51,26 @@ StewardArc governs the decision and the record of access. It is **not** an IAM p
 | [Domain model](docs/architecture/domain-model.md) | Conceptual domain model. |
 | [ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md) | Backend architecture baseline. |
 | [ADR-002](docs/architecture/adr/0002-technology-stack-baseline.md) | Technology stack baseline. |
+
+## Running locally
+
+The local environment runs with Docker Compose only; PHP, Composer and Node do not need to be installed on the host. It contains the backend, the frontend and PostgreSQL, and is intended for local development only.
+
+```bash
+cp backend/.env.example backend/.env
+docker compose build
+docker compose run --rm --no-deps backend composer install
+docker compose run --rm --no-deps backend php artisan key:generate
+docker compose run --rm --no-deps frontend npm ci
+docker compose up -d
+```
+
+- Backend health check: http://localhost:8000/up
+- Frontend: http://localhost:5173
+
+Stop the environment with `docker compose down`. Add `-v` to also remove the local database volume.
+
+No migrations are run automatically, and no domain schema exists yet.
 
 ## About this project
 
