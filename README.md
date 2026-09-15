@@ -49,9 +49,11 @@ StewardArc governs the decision and the record of access. It is **not** an IAM p
 | [Traceability](docs/traceability.md) | Links from needs to requirements, rules, use cases, criteria and NFRs. |
 | [Architecture overview](docs/architecture/overview.md) | Drivers, constraints, approved baseline and open decisions. |
 | [Domain model](docs/architecture/domain-model.md) | Conceptual domain model. |
+| [Initial data model](docs/architecture/data-model.md) | Initial logical and physical persistence baseline. |
 | [ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md) | Backend architecture baseline. |
 | [ADR-002](docs/architecture/adr/0002-technology-stack-baseline.md) | Technology stack baseline. |
 | [ADR-003](docs/architecture/adr/0003-lifecycle-state-and-persistence-baseline.md) | Lifecycle state and persistence baseline. |
+| [ADR-004](docs/architecture/adr/0004-initial-data-model-baseline.md) | Initial data model baseline. |
 
 ## Running locally
 
@@ -77,4 +79,4 @@ No migrations are run automatically, and no domain schema exists yet.
 
 StewardArc is a portfolio project that treats a small, well-bounded product as a complete software engineering case study: problem framing, requirements, behavior, traceability and architecture come before implementation.
 
-Technical decisions are made deliberately and recorded when there is a real driver for them. So far, the backend architecture baseline ([ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md)), the technology stack baseline ([ADR-002](docs/architecture/adr/0002-technology-stack-baseline.md)) and the lifecycle state and persistence baseline ([ADR-003](docs/architecture/adr/0003-lifecycle-state-and-persistence-baseline.md)) have been decided. Concrete versions were later materialized by the executable scaffold through Docker images and lockfiles; the policy for updating them remains open. Authentication, concrete concurrency mechanisms, API contracts and deployment also remain open on purpose; see [open decisions](docs/architecture/overview.md#deliberately-open-decisions).
+Technical decisions are made deliberately and recorded when there is a real driver for them. So far, the backend architecture baseline ([ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md)), the technology stack baseline ([ADR-002](docs/architecture/adr/0002-technology-stack-baseline.md)), the lifecycle state and persistence baseline ([ADR-003](docs/architecture/adr/0003-lifecycle-state-and-persistence-baseline.md)) and the initial data model baseline ([ADR-004](docs/architecture/adr/0004-initial-data-model-baseline.md)) have been decided. Concrete versions were later materialized by the executable scaffold through Docker images and lockfiles; the policy for updating them remains open. Authentication, concrete concurrency mechanisms, API contracts and deployment also remain open on purpose; see [open decisions](docs/architecture/overview.md#deliberately-open-decisions).

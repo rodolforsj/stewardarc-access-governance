@@ -2,7 +2,7 @@
 
 This is the **Conceptual Domain Model v1** of StewardArc. It describes concepts and their relationships. It is not a data model: it defines no identifiers, tables, columns, technical types, aggregates, repositories or packages.
 
-Behavior and states are described in [../behavior.md](../behavior.md); architectural context in [overview.md](overview.md).
+Behavior and states are described in [../behavior.md](../behavior.md); architectural context in [overview.md](overview.md). The initial logical and physical persistence baseline is documented separately in [data-model.md](data-model.md).
 
 ## Concepts
 

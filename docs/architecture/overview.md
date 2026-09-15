@@ -38,6 +38,8 @@ The executable scaffold later materialized concrete versions through Docker imag
 
 The lifecycle state and persistence baseline is recorded in [ADR-003](adr/0003-lifecycle-state-and-persistence-baseline.md): the current Access Request state (`S1`–`S5`, including `S3`) is persisted; the Granted Access state (`A1`–`A3`), including expiration (`A2`), is determined from preserved functional facts, the effective validity period and time; and a functional fact and the related change of the Access Request current state are made in the same PostgreSQL transaction.
 
+The initial data model baseline is recorded in [ADR-004](adr/0004-initial-data-model-baseline.md) and detailed in [data-model.md](data-model.md): eight tables covering the catalog, access requests and preserved functional facts, application-generated UUIDv7 identifiers, controlled values as text with CHECK constraints, restrictive foreign keys, no persisted state column for Granted Access and no table for Functional History.
+
 ## Known conceptual boundaries
 
 - **Access Governance** is a cohesive core: access requests, decisions, grant confirmation, Granted Access, effective validity, revocation confirmation, expiration and functional history.
@@ -56,11 +58,11 @@ The following are intentionally not decided:
 - deployment, including separate or joint deployment of frontend and backend, and cloud or hosting;
 - concrete authentication and session mechanism;
 - concrete source of the Governance authority;
-- whether a resource can have more than one Resource Owner;
+- whether a resource can have more than one Resource Owner beyond the MVP, which models exactly one (see ADR-004);
 - any future proactive or operational time-based processing (`A2` is already derived from the effective validity period and time; see ADR-003);
-- concrete isolation level, locking, concurrency, retry and idempotency strategy (the conceptual transaction boundary is decided in ADR-003);
+- concrete isolation level, locking, concurrency, retry and idempotency strategy (the conceptual transaction boundary is decided in ADR-003), including the concurrent enforcement of the `RN03` rule about an equivalent active Granted Access;
 - detailed API contracts;
-- logical and physical data model;
+- schema evolution beyond the initial data model baseline of ADR-004, including performance indexes beyond those motivated by integrity;
 - concrete observability;
 - testing strategy;
 - CI.
