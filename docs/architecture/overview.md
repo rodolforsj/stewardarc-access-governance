@@ -42,6 +42,8 @@ The initial data model baseline is recorded in [ADR-004](adr/0004-initial-data-m
 
 The concurrency and invariant enforcement baseline is recorded in [ADR-005](adr/0005-concurrency-and-invariant-enforcement-baseline.md): PostgreSQL stays at `READ COMMITTED`; commands that change an existing Access Request or Granted Access take a pessimistic row lock on it; and `RN03` is serialized by a transaction-level PostgreSQL advisory lock, deterministic per requester and access profile, taken by request creation, grant confirmation and revocation confirmation, with the invariant re-checked inside it. The unique partial index remains as a structural second line of defense. None of this is implemented in application code yet.
 
+The application implementation baseline is recorded in [ADR-006](adr/0006-application-implementation-baseline.md): Eloquent models stay in `App\Models`, future functional operations live in `App\AccessGovernance\Actions` and PostgreSQL-specific concurrency mechanisms in `App\AccessGovernance\Concurrency`; each critical Action owns its own transaction; the advisory lock key is a namespaced SHA-256 derivation passed to `pg_advisory_xact_lock(integer, integer)`; locks are acquired advisory first, then row; and database-dependent tests run against real PostgreSQL. No application code has been written yet.
+
 ## Known conceptual boundaries
 
 - **Access Governance** is a cohesive core: access requests, decisions, grant confirmation, Granted Access, effective validity, revocation confirmation, expiration and functional history.
@@ -50,7 +52,7 @@ The concurrency and invariant enforcement baseline is recorded in [ADR-005](adr/
 - **Target systems**, where grants and revocations actually happen, are outside StewardArc.
 - **Operational telemetry** is a concern separate from the functional history.
 
-Internal module organization, packages, namespaces, layers and code directories are not defined yet.
+The minimum implementation baseline defines only three code locations — `App\Models`, `App\AccessGovernance\Actions` and `App\AccessGovernance\Concurrency` (see [ADR-006](adr/0006-application-implementation-baseline.md)). Further module organization, packages, namespaces and layers remain open until a real need appears.
 
 ## Deliberately open decisions
 
@@ -63,11 +65,11 @@ The following are intentionally not decided:
 - whether a resource can have more than one Resource Owner beyond the MVP, which models exactly one (see ADR-004);
 - any future proactive or operational time-based processing (`A2` is already derived from the effective validity period and time; see ADR-003);
 - retry policy, including deadlock retry, and transport idempotency keys (the concurrency baseline itself is decided in ADR-005);
-- physical encoding of the advisory lock key, and the lock timeout and wait policy;
+- custom lock timeout and wait tuning (the baseline uses blocking advisory acquisition; see ADR-006);
 - detailed API contracts;
 - schema evolution beyond the initial data model baseline of ADR-004, including performance indexes beyond those motivated by integrity;
 - concrete observability;
-- testing strategy;
+- test coverage policy, CI execution and provisioning of PostgreSQL for tests, and test organization beyond the baseline (which already distinguishes pure unit tests from PostgreSQL integration and concurrency tests; see ADR-006);
 - CI.
 
 Each should be decided when a real need arises and recorded as an ADR when it is architecturally significant.
