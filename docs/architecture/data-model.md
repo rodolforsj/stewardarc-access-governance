@@ -2,7 +2,7 @@
 
 This is the logical and physical persistence baseline of StewardArc. It documents [ADR-004](adr/0004-initial-data-model-baseline.md), which defined the original eight tables, and [ADR-007](adr/0007-governance-authority-baseline.md), which later added the Governance authority association.
 
-The eight tables of ADR-004 are materialized by the backend migrations and Eloquent models. The ninth table, `governance_memberships`, is **documented here but not materialized yet**: no migration and no Eloquent model exist for it at this point.
+All nine tables are materialized by the backend migrations and Eloquent models: the eight defined by ADR-004 and the Governance authority association added by ADR-007.
 
 This is not a schema dump: it remains the reference against which the schema is audited, and it should be updated when a later decision changes the baseline.
 
@@ -110,7 +110,7 @@ A preserved fact: the record that an access was revoked externally.
 
 ### `governance_memberships`
 
-The current Governance authorization association. A row means the Actor Reference currently holds Governance authority; no row means it does not. **Not materialized yet** (see [ADR-007](adr/0007-governance-authority-baseline.md)).
+The current Governance authorization association (see [ADR-007](adr/0007-governance-authority-baseline.md)). A row means the Actor Reference currently holds Governance authority; no row means it does not.
 
 | Column | Type | Null | Constraint / meaning |
 | --- | --- | --- | --- |
@@ -152,7 +152,7 @@ Guaranteed structurally by the database:
 | UNIQUE `granted_access_id` | `revocation_confirmations` | At most one revocation confirmation per granted access. |
 | UNIQUE `external_identity_key` | `actor_references` | One actor reference per external identity key. |
 | Unique partial index | `access_requests` | Over (`requester_actor_reference_id`, `access_profile_id`) restricted to `current_state IN ('S1','S2','S3')`. Prevents two equivalent requests in processing at the same time (part of `RN03`). The physical index name is not fixed here. |
-| PRIMARY KEY / FK `actor_reference_id` | `governance_memberships` | An Actor Reference holds at most one current Governance membership, and every membership references an existing actor. Restrictive foreign key. Not materialized yet. |
+| PRIMARY KEY / FK `actor_reference_id` | `governance_memberships` | An Actor Reference holds at most one current Governance membership, and every membership references an existing actor. Restrictive foreign key. |
 | Restrictive foreign keys | all | `RESTRICT`/`NO ACTION`; no destructive cascade delete over functional facts. |
 
 Domain and application rules that do **not** fit a simple CHECK, and are therefore enforced by the domain:

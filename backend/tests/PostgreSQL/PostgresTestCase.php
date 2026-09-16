@@ -23,7 +23,7 @@ use Tests\TestCase;
  */
 abstract class PostgresTestCase extends TestCase
 {
-    /** Child tables first; truncation is restricted to the eight domain tables. */
+    /** Child tables first; truncation is restricted to the nine domain tables. */
     protected const DOMAIN_TABLES = [
         'revocation_confirmations',
         'granted_accesses',
@@ -32,6 +32,7 @@ abstract class PostgresTestCase extends TestCase
         'access_requests',
         'access_profiles',
         'resources',
+        'governance_memberships',
         'actor_references',
     ];
 

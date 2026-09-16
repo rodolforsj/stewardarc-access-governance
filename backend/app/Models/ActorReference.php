@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ActorReference extends Model
 {
@@ -35,5 +36,10 @@ class ActorReference extends Model
     public function revocationConfirmations(): HasMany
     {
         return $this->hasMany(RevocationConfirmation::class, 'actor_reference_id');
+    }
+
+    public function governanceMembership(): HasOne
+    {
+        return $this->hasOne(GovernanceMembership::class, 'actor_reference_id');
     }
 }
