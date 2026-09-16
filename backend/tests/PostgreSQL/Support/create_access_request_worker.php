@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Test-only worker: runs the real CreateAccessRequest Action in an independent
  * process/connection and reports the outcome as JSON on stdout.
  *
- * Usage: php create_access_request_worker.php <requesterId> <profileId> <justification>
+ * Usage: php create_access_request_worker.php <requesterId> <profileId> <justification> [applicationName]
  */
 
 use App\AccessGovernance\Actions\CreateAccessRequest;
@@ -28,6 +28,11 @@ $database = (string) $connection->getDatabaseName();
 if ($connection->getDriverName() !== 'pgsql' || ! str_ends_with($database, '_test')) {
     echo json_encode(['status' => 'guard-failed', 'database' => $database]), PHP_EOL;
     exit(1);
+}
+
+if (($argv[4] ?? '') !== '') {
+    // Test-only: identifies this worker's backend in pg_stat_activity.
+    DB::select("select set_config('application_name', ?, false)", [(string) $argv[4]]);
 }
 
 try {

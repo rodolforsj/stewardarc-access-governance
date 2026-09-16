@@ -95,7 +95,7 @@ A preserved fact: the record that the grant was executed externally.
 
 This table has **no** state, status, lifecycle, expired or revoked column: `A1`/`A2`/`A3` are derived (ADR-003).
 
-For a Privileged request, `valid_until_at` is the grant confirmation's `recorded_at` plus `requested_duration_seconds`. This relationship spans tables and is not expressed as a CHECK constraint; it is guaranteed by the domain operation and its transaction when implemented.
+For a Privileged request, `valid_until_at` is the grant confirmation's `recorded_at` plus `requested_duration_seconds`. This relationship spans tables and is not expressed as a CHECK constraint; it is guaranteed by the domain operation and its transaction, materialized by `ConfirmExternalAccessGrant`.
 
 ### `revocation_confirmations`
 
@@ -168,7 +168,7 @@ Domain and application rules that do **not** fit a simple CHECK, and are therefo
 Deliberately deferred:
 
 - Retry, transport idempotency and lock timeout or wait tuning. The isolation level and the locking strategy are decided in ADR-005 and ADR-006.
-- The enforcement of the operations that are not implemented yet: grant confirmation and revocation confirmation.
+- The enforcement of the operation that is not implemented yet: revocation confirmation.
 
 ## Derived Granted Access state
 

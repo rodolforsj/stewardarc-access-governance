@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\PostgreSQL;
 
+use App\AccessGovernance\Actions\DecideAccessRequest;
 use App\Models\AccessProfile;
 use App\Models\AccessRequest;
 use App\Models\ActorReference;
+use App\Models\Decision;
 use App\Models\GrantConfirmation;
 use App\Models\GovernanceMembership;
 use App\Models\GrantedAccess;
@@ -135,6 +137,47 @@ abstract class PostgresTestCase extends TestCase
         $request->save();
 
         return $request;
+    }
+
+    /**
+     * Records a Decision fact directly, for fixtures that need a specific
+     * authorship or moment in time.
+     */
+    protected function makeDecision(
+        AccessRequest $request,
+        ActorReference $actor,
+        string $stage,
+        string $outcome = 'approved',
+        ?string $justification = null,
+        ?DateTimeInterface $decidedAt = null,
+    ): Decision {
+        $decision = new Decision();
+        $decision->access_request_id = $request->id;
+        $decision->stage = $stage;
+        $decision->outcome = $outcome;
+        $decision->actor_reference_id = $actor->id;
+        $decision->justification = $justification;
+        $decision->decided_at = $decidedAt ?? Carbon::now();
+        $decision->save();
+
+        return $decision;
+    }
+
+    /**
+     * Drives an existing S1 request to S3 through the real decision Action.
+     */
+    protected function approveUntilAwaitingGrant(
+        AccessRequest $request,
+        ActorReference $resourceOwner,
+        ?ActorReference $governance = null,
+    ): AccessRequest {
+        (new DecideAccessRequest())->execute($request->id, $resourceOwner->id, 'approved');
+
+        if ($governance !== null) {
+            (new DecideAccessRequest())->execute($request->id, $governance->id, 'approved');
+        }
+
+        return $request->fresh();
     }
 
     /**
