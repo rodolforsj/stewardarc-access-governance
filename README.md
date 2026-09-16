@@ -4,7 +4,7 @@
 
 StewardArc is an engineering case study in **access request governance**. It defines a product that lets an organization record, in a traceable way, who requested which access and why, who authorized it and through which decision path, when the external grant was confirmed, how long the access is valid, whether it was revoked, and the history behind each outcome.
 
-> **Status:** documentation baseline, executable project scaffold and initial persistence layer established. No product functionality has been implemented yet.
+> **Status:** documentation baseline, executable project scaffold, initial persistence layer and the first application slice (Request access) established. There is still no API, no authentication and no user interface.
 
 ## The problem
 
@@ -81,7 +81,19 @@ No migrations are run automatically. To create the initial schema described in [
 docker compose exec backend php artisan migrate
 ```
 
-The schema holds no product behavior yet: there are no endpoints, no authentication and no domain operations.
+The first application slice, **Request access** (UC-001 / RF-002), is implemented as an Action and is exercised through the PostgreSQL tests below. There are still no endpoints, no authentication and no user interface.
+
+### Application tests
+
+The application tests run against real PostgreSQL, in a dedicated database, and are separate from the scaffold's stock tests:
+
+```bash
+docker compose exec postgres createdb -U stewardarc stewardarc_test
+docker compose exec -e DB_DATABASE=stewardarc_test backend php artisan migrate --force
+docker compose exec backend vendor/bin/phpunit -c phpunit.postgresql.xml
+```
+
+They refuse to run unless the driver is PostgreSQL and the database name ends with `_test`.
 
 ## About this project
 
