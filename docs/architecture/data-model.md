@@ -1,8 +1,10 @@
 # Initial data model
 
-This is the initial logical and physical persistence baseline of StewardArc. It documents [ADR-004](adr/0004-initial-data-model-baseline.md) and was defined before the first migrations existed.
+This is the logical and physical persistence baseline of StewardArc. It documents [ADR-004](adr/0004-initial-data-model-baseline.md), which defined the original eight tables, and [ADR-007](adr/0007-governance-authority-baseline.md), which later added the Governance authority association.
 
-It is now materialized by the backend migrations and Eloquent models. It is not a schema dump: it remains the reference against which the schema is audited, and it should be updated when a later decision changes the baseline.
+The eight tables of ADR-004 are materialized by the backend migrations and Eloquent models. The ninth table, `governance_memberships`, is **documented here but not materialized yet**: no migration and no Eloquent model exist for it at this point.
+
+This is not a schema dump: it remains the reference against which the schema is audited, and it should be updated when a later decision changes the baseline.
 
 The conceptual model stays in [domain-model.md](domain-model.md); lifecycles and rules are described in [behavior.md](../behavior.md) and [requirements.md](../requirements.md).
 
@@ -106,6 +108,18 @@ A preserved fact: the record that an access was revoked externally.
 | `actor_reference_id` | `uuid` | NOT NULL | FK → `actor_references.id`. Who recorded the confirmation. |
 | `recorded_at` | `timestamptz` | NOT NULL | When the confirmation was recorded. |
 
+### `governance_memberships`
+
+The current Governance authorization association. A row means the Actor Reference currently holds Governance authority; no row means it does not. **Not materialized yet** (see [ADR-007](adr/0007-governance-authority-baseline.md)).
+
+| Column | Type | Null | Constraint / meaning |
+| --- | --- | --- | --- |
+| `actor_reference_id` | `uuid` | NOT NULL | PRIMARY KEY and FK → `actor_references.id`, restrictive. |
+
+This table has no identifier of its own: the foreign key already identifies the association, so no UUIDv7 is generated for it. It carries no timestamps, no `is_active`, no `role` and no metadata.
+
+It expresses **current authority only**. It is not authentication, not a credential, not a preserved functional fact and not a history of Governance assignments.
+
 ## Relationships
 
 - Resource 1 → N Access Profiles; each Access Profile belongs to exactly one Resource.
@@ -117,6 +131,7 @@ A preserved fact: the record that an access was revoked externally.
 - Grant Confirmation 1 → 1 Granted Access when the grant is recorded; every Granted Access originates from exactly one Grant Confirmation.
 - Granted Access 1 → 0..1 Revocation Confirmation.
 - Decisions, Grant Confirmations and Revocation Confirmations N → 1 Actor Reference, recording who acted.
+- Actor Reference 1 → 0..1 Governance Membership; a Governance Membership belongs to exactly one Actor Reference.
 
 ## Integrity constraints
 
@@ -137,12 +152,13 @@ Guaranteed structurally by the database:
 | UNIQUE `granted_access_id` | `revocation_confirmations` | At most one revocation confirmation per granted access. |
 | UNIQUE `external_identity_key` | `actor_references` | One actor reference per external identity key. |
 | Unique partial index | `access_requests` | Over (`requester_actor_reference_id`, `access_profile_id`) restricted to `current_state IN ('S1','S2','S3')`. Prevents two equivalent requests in processing at the same time (part of `RN03`). The physical index name is not fixed here. |
+| PRIMARY KEY / FK `actor_reference_id` | `governance_memberships` | An Actor Reference holds at most one current Governance membership, and every membership references an existing actor. Restrictive foreign key. Not materialized yet. |
 | Restrictive foreign keys | all | `RESTRICT`/`NO ACTION`; no destructive cascade delete over functional facts. |
 
 Domain and application rules that do **not** fit a simple CHECK, and are therefore enforced by the domain:
 
 - `RN04` — nobody decides their own request.
-- `RN05`, `RN06`, `RN09` — the required authority decides, in the required sequence.
+- `RN05`, `RN06`, `RN09` — the required authority decides, in the required sequence. The Resource Owner authority comes from `resources.resource_owner_actor_reference_id`; the Governance authority comes from `governance_memberships` (ADR-007). Neither is expressed as a CHECK.
 - `RN10` — a grant is confirmed only after all required approvals, with the request in `S3`.
 - `RN11` — a Resource Owner does not request a profile of their own resource.
 - `RN02` — a request is made for the requester themselves.
@@ -151,8 +167,8 @@ Domain and application rules that do **not** fit a simple CHECK, and are therefo
 
 Deliberately deferred:
 
-- The `RN03` half about an equivalent active Granted Access (see below).
-- Concurrency control: isolation level, locking, retry and idempotency.
+- Retry, transport idempotency and lock timeout or wait tuning. The isolation level and the locking strategy are decided in ADR-005 and ADR-006.
+- The enforcement of the operations that are not implemented yet: grant confirmation and revocation confirmation.
 
 ## Derived Granted Access state
 
@@ -174,7 +190,9 @@ It does not cover the other half of `RN03`: a new request while an equivalent Gr
 
 The concurrent mechanism for that half is now defined conceptually by [ADR-005](adr/0005-concurrency-and-invariant-enforcement-baseline.md): the creation of a request, the confirmation of a grant and the confirmation of a revocation take a transaction-level PostgreSQL advisory lock, deterministic per requester and access profile, and re-check `RN03` inside it; the Granted Access row is also row-locked during a revocation.
 
-The partial unique index remains the structural protection for requests in processing, and the schema still introduces no trigger, generated status column, scheduler, materialized `A1` flag or artificial exclusion constraint. None of the ADR-005 mechanisms is implemented in application code yet.
+For **request creation**, this mechanism is implemented in application code by `CreateAccessRequest` together with `Rn03AdvisoryLock`, which re-checks both halves of `RN03` inside the advisory lock. The corresponding mechanisms for grant confirmation and revocation confirmation will come with those slices.
+
+The partial unique index remains the structural protection for requests in processing, and the schema still introduces no trigger, generated status column, scheduler, materialized `A1` flag or artificial exclusion constraint.
 
 ## Functional History
 
@@ -196,6 +214,7 @@ erDiagram
     actor_references ||--o{ decisions : "decides"
     actor_references ||--o{ grant_confirmations : "records"
     actor_references ||--o{ revocation_confirmations : "records"
+    actor_references ||--o| governance_memberships : "may hold Governance authority"
     resources ||--o{ access_profiles : "offers"
     access_profiles ||--o{ access_requests : "requested as"
     access_requests ||--o{ decisions : "has per stage"
@@ -208,11 +227,11 @@ erDiagram
 
 - Authentication and session, and the concrete mapping from the authenticated identity to `external_identity_key`.
 - More than one Resource Owner per resource.
-- The concrete source of the Governance authority.
+- The operational mechanism for provisioning and removing Governance memberships.
+- Any temporal history of a Governance membership.
 - Any removal or deactivation lifecycle for the catalog, and any soft delete.
 - Generic `created_at`/`updated_at` columns.
 - Performance indexes beyond those motivated by integrity.
-- The concurrent enforcement mechanism for the `RN03` active access case.
-- Isolation level, locking, retry and idempotency.
+- Retry, transport idempotency and lock timeout or wait tuning.
 - Proactive time-related processing.
 - Detailed API contracts and Laravel or Eloquent implementation details.

@@ -44,6 +44,8 @@ The concurrency and invariant enforcement baseline is recorded in [ADR-005](adr/
 
 The application implementation baseline is recorded in [ADR-006](adr/0006-application-implementation-baseline.md): Eloquent models stay in `App\Models`, future functional operations live in `App\AccessGovernance\Actions` and PostgreSQL-specific concurrency mechanisms in `App\AccessGovernance\Concurrency`; each critical Action owns its own transaction; the advisory lock key is a namespaced SHA-256 derivation passed to `pg_advisory_xact_lock(integer, integer)`; locks are acquired advisory first, then row; and database-dependent tests run against real PostgreSQL. The first slice implemented under these namespaces is Request access (UC-001 / RF-002).
 
+The governance authority baseline is recorded in [ADR-007](adr/0007-governance-authority-baseline.md): the current Governance authority is a minimal association, `governance_memberships`, whose single column `actor_reference_id` is at once primary key and foreign key to `actor_references`. Resource Owner authority keeps coming from the resource itself, the two authorities may overlap in the same actor, and `RN04` still forbids deciding one's own request. The documented model therefore targets nine domain tables, while the executable schema still has eight: this association is not materialized yet.
+
 ## Known conceptual boundaries
 
 - **Access Governance** is a cohesive core: access requests, decisions, grant confirmation, Granted Access, effective validity, revocation confirmation, expiration and functional history.
@@ -61,7 +63,7 @@ The following are intentionally not decided:
 - version update and maintenance policy for the stack;
 - deployment, including separate or joint deployment of frontend and backend, and cloud or hosting;
 - concrete authentication and session mechanism;
-- concrete source of the Governance authority;
+- the operational mechanism for provisioning and removing Governance memberships, and any temporal history of them (the authority source itself is decided in ADR-007);
 - whether a resource can have more than one Resource Owner beyond the MVP, which models exactly one (see ADR-004);
 - any future proactive or operational time-based processing (`A2` is already derived from the effective validity period and time; see ADR-003);
 - retry policy, including deadlock retry, and transport idempotency keys (the concurrency baseline itself is decided in ADR-005);
