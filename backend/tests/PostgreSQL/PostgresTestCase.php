@@ -8,6 +8,7 @@ use App\Models\AccessProfile;
 use App\Models\AccessRequest;
 use App\Models\ActorReference;
 use App\Models\GrantConfirmation;
+use App\Models\GovernanceMembership;
 use App\Models\GrantedAccess;
 use App\Models\Resource;
 use App\Models\RevocationConfirmation;
@@ -78,6 +79,15 @@ abstract class PostgresTestCase extends TestCase
         $actor->save();
 
         return $actor;
+    }
+
+    protected function makeGovernanceMembership(ActorReference $actor): GovernanceMembership
+    {
+        $membership = new GovernanceMembership();
+        $membership->actor_reference_id = $actor->id;
+        $membership->save();
+
+        return $membership;
     }
 
     protected function makeResource(ActorReference $owner, string $name = 'Resource'): Resource

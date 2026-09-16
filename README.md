@@ -4,7 +4,7 @@
 
 StewardArc is an engineering case study in **access request governance**. It defines a product that lets an organization record, in a traceable way, who requested which access and why, who authorized it and through which decision path, when the external grant was confirmed, how long the access is valid, whether it was revoked, and the history behind each outcome.
 
-> **Status:** documentation baseline, executable project scaffold, initial persistence layer and the first application slice (Request access) established. There is still no API, no authentication and no user interface.
+> **Status:** documentation baseline, executable project scaffold, persistence layer and the first two application slices (Request access and Decide access request) established. There is still no API, no authentication and no user interface.
 
 ## The problem
 
@@ -82,7 +82,7 @@ No migrations are run automatically. To create the current schema described in [
 docker compose exec backend php artisan migrate
 ```
 
-The first application slice, **Request access** (UC-001 / RF-002), is implemented as an Action and is exercised through the PostgreSQL tests below. There are still no endpoints, no authentication and no user interface.
+Two application slices are implemented as Actions: **Request access** (UC-001 / RF-002) and **Decide access request** (UC-002 / RF-004 and RF-005). There are still no endpoints, no authentication and no user interface, so the PostgreSQL suite below is how the functional behavior is exercised and validated.
 
 ### Application tests
 
@@ -100,4 +100,4 @@ They refuse to run unless the driver is PostgreSQL and the database name ends wi
 
 StewardArc is a portfolio project that treats a small, well-bounded product as a complete software engineering case study: problem framing, requirements, behavior, traceability and architecture come before implementation.
 
-Technical decisions are made deliberately and recorded when there is a real driver for them. So far, the backend architecture baseline ([ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md)), the technology stack baseline ([ADR-002](docs/architecture/adr/0002-technology-stack-baseline.md)), the lifecycle state and persistence baseline ([ADR-003](docs/architecture/adr/0003-lifecycle-state-and-persistence-baseline.md)), the initial data model baseline ([ADR-004](docs/architecture/adr/0004-initial-data-model-baseline.md)), the concurrency and invariant enforcement baseline ([ADR-005](docs/architecture/adr/0005-concurrency-and-invariant-enforcement-baseline.md)), the application implementation baseline ([ADR-006](docs/architecture/adr/0006-application-implementation-baseline.md)) and the governance authority baseline ([ADR-007](docs/architecture/adr/0007-governance-authority-baseline.md)) have been decided. The first application slice, Request access, is implemented, and the Governance membership persistence is materialized. Concrete versions were later materialized by the executable scaffold through Docker images and lockfiles; the policy for updating them remains open. Authentication, retry and idempotency policies, API contracts and deployment also remain open on purpose; see [open decisions](docs/architecture/overview.md#deliberately-open-decisions).
+Technical decisions are made deliberately and recorded when there is a real driver for them. So far, the backend architecture baseline ([ADR-001](docs/architecture/adr/0001-backend-architecture-baseline.md)), the technology stack baseline ([ADR-002](docs/architecture/adr/0002-technology-stack-baseline.md)), the lifecycle state and persistence baseline ([ADR-003](docs/architecture/adr/0003-lifecycle-state-and-persistence-baseline.md)), the initial data model baseline ([ADR-004](docs/architecture/adr/0004-initial-data-model-baseline.md)), the concurrency and invariant enforcement baseline ([ADR-005](docs/architecture/adr/0005-concurrency-and-invariant-enforcement-baseline.md)), the application implementation baseline ([ADR-006](docs/architecture/adr/0006-application-implementation-baseline.md)) and the governance authority baseline ([ADR-007](docs/architecture/adr/0007-governance-authority-baseline.md)) have been decided. The Request access and Decide access request slices are implemented, and the Governance membership persistence is materialized. Concrete versions were later materialized by the executable scaffold through Docker images and lockfiles; the policy for updating them remains open. Authentication, retry and idempotency policies, API contracts and deployment also remain open on purpose; see [open decisions](docs/architecture/overview.md#deliberately-open-decisions).
