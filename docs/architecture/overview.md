@@ -40,6 +40,8 @@ The lifecycle state and persistence baseline is recorded in [ADR-003](adr/0003-l
 
 The initial data model baseline is recorded in [ADR-004](adr/0004-initial-data-model-baseline.md) and detailed in [data-model.md](data-model.md): eight tables covering the catalog, access requests and preserved functional facts, application-generated UUIDv7 identifiers, controlled values as text with CHECK constraints, restrictive foreign keys, no persisted state column for Granted Access and no table for Functional History.
 
+The concurrency and invariant enforcement baseline is recorded in [ADR-005](adr/0005-concurrency-and-invariant-enforcement-baseline.md): PostgreSQL stays at `READ COMMITTED`; commands that change an existing Access Request or Granted Access take a pessimistic row lock on it; and `RN03` is serialized by a transaction-level PostgreSQL advisory lock, deterministic per requester and access profile, taken by request creation, grant confirmation and revocation confirmation, with the invariant re-checked inside it. The unique partial index remains as a structural second line of defense. None of this is implemented in application code yet.
+
 ## Known conceptual boundaries
 
 - **Access Governance** is a cohesive core: access requests, decisions, grant confirmation, Granted Access, effective validity, revocation confirmation, expiration and functional history.
@@ -60,7 +62,8 @@ The following are intentionally not decided:
 - concrete source of the Governance authority;
 - whether a resource can have more than one Resource Owner beyond the MVP, which models exactly one (see ADR-004);
 - any future proactive or operational time-based processing (`A2` is already derived from the effective validity period and time; see ADR-003);
-- concrete isolation level, locking, concurrency, retry and idempotency strategy (the conceptual transaction boundary is decided in ADR-003), including the concurrent enforcement of the `RN03` rule about an equivalent active Granted Access;
+- retry policy, including deadlock retry, and transport idempotency keys (the concurrency baseline itself is decided in ADR-005);
+- physical encoding of the advisory lock key, and the lock timeout and wait policy;
 - detailed API contracts;
 - schema evolution beyond the initial data model baseline of ADR-004, including performance indexes beyond those motivated by integrity;
 - concrete observability;

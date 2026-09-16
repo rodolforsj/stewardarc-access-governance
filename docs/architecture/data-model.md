@@ -172,7 +172,9 @@ The unique partial index over (`requester_actor_reference_id`, `access_profile_i
 
 It does not cover the other half of `RN03`: a new request while an equivalent Granted Access is still active. That half depends on derived state — the presence and time of a revocation confirmation, `valid_until_at` and the current time — which a simple unique index cannot express.
 
-No trigger, generated status column, scheduler, materialized `A1` flag, artificial exclusion constraint, lock, serializable transaction, advisory lock or idempotency key is introduced to close this gap now. The concurrent guarantee for this part of `RN03` must be defined in a later concurrency and invariant enforcement checkpoint, before the final implementation of `RF-002`.
+The concurrent mechanism for that half is now defined conceptually by [ADR-005](adr/0005-concurrency-and-invariant-enforcement-baseline.md): the creation of a request, the confirmation of a grant and the confirmation of a revocation take a transaction-level PostgreSQL advisory lock, deterministic per requester and access profile, and re-check `RN03` inside it; the Granted Access row is also row-locked during a revocation.
+
+The partial unique index remains the structural protection for requests in processing, and the schema still introduces no trigger, generated status column, scheduler, materialized `A1` flag or artificial exclusion constraint. None of the ADR-005 mechanisms is implemented in application code yet.
 
 ## Functional History
 
