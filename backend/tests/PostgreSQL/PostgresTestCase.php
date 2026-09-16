@@ -202,6 +202,29 @@ abstract class PostgresTestCase extends TestCase
         return $access;
     }
 
+    /**
+     * Test-only assertion tool: applies the derived `A1`/`A2`/`A3` definition
+     * of the baseline literally. No state is materialized by the product.
+     */
+    protected function derivedGrantedAccessState(GrantedAccess $access, ?DateTimeInterface $now = null): string
+    {
+        $moment = $now === null ? Carbon::now() : Carbon::instance(Carbon::parse($now));
+        $validUntil = $access->fresh()->valid_until_at;
+        $revocation = RevocationConfirmation::query()
+            ->where('granted_access_id', $access->id)
+            ->first();
+
+        if ($revocation !== null && ($validUntil === null || $revocation->recorded_at->lessThan($validUntil))) {
+            return 'A3';
+        }
+
+        if ($validUntil !== null && ! $moment->lessThan($validUntil)) {
+            return 'A2';
+        }
+
+        return 'A1';
+    }
+
     protected function makeRevocationConfirmation(GrantedAccess $access, ActorReference $recordedBy): RevocationConfirmation
     {
         $confirmation = new RevocationConfirmation();

@@ -99,7 +99,7 @@ For a Privileged request, `valid_until_at` is the grant confirmation's `recorded
 
 ### `revocation_confirmations`
 
-A preserved fact: the record that an access was revoked externally.
+A preserved fact: the record that an access was revoked externally, written by `RecordExternalAccessRevocation`. The derived state definition below is unchanged: the confirmation does not turn an access already ended by expiration into `A3`.
 
 | Column | Type | Null | Constraint / meaning |
 | --- | --- | --- | --- |
@@ -168,7 +168,6 @@ Domain and application rules that do **not** fit a simple CHECK, and are therefo
 Deliberately deferred:
 
 - Retry, transport idempotency and lock timeout or wait tuning. The isolation level and the locking strategy are decided in ADR-005 and ADR-006.
-- The enforcement of the operation that is not implemented yet: revocation confirmation.
 
 ## Derived Granted Access state
 
@@ -190,7 +189,7 @@ It does not cover the other half of `RN03`: a new request while an equivalent Gr
 
 The concurrent mechanism for that half is now defined conceptually by [ADR-005](adr/0005-concurrency-and-invariant-enforcement-baseline.md): the creation of a request, the confirmation of a grant and the confirmation of a revocation take a transaction-level PostgreSQL advisory lock, deterministic per requester and access profile, and re-check `RN03` inside it; the Granted Access row is also row-locked during a revocation.
 
-For **request creation**, this mechanism is implemented in application code by `CreateAccessRequest` together with `Rn03AdvisoryLock`, which re-checks both halves of `RN03` inside the advisory lock. The corresponding mechanisms for grant confirmation and revocation confirmation will come with those slices.
+In application code, `CreateAccessRequest` takes the advisory lock and re-checks both halves of `RN03` inside it, `ConfirmExternalAccessGrant` takes the advisory lock and then the Access Request row lock, and `RecordExternalAccessRevocation` takes the advisory lock and then the Granted Access row lock. The three operations that take part in the `RN03` serialization are therefore materialized.
 
 The partial unique index remains the structural protection for requests in processing, and the schema still introduces no trigger, generated status column, scheduler, materialized `A1` flag or artificial exclusion constraint.
 
