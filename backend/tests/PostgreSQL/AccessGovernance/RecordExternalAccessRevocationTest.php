@@ -14,6 +14,7 @@ use App\Models\GrantedAccess;
 use App\Models\RevocationConfirmation;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\PostgreSQL\PostgresTestCase;
 
@@ -83,24 +84,37 @@ final class RecordExternalAccessRevocationTest extends PostgresTestCase
         $this->assertSame('S4', $request->fresh()->current_state);
     }
 
-    /** The temporal boundary: recorded exactly at `valid_until_at` keeps A2. */
+    /**
+     * The temporal boundary: recorded exactly at `valid_until_at` keeps A2.
+     *
+     * Test-only orchestration: the Action runs inside an outer transaction, so
+     * its functional instant (ADR-009) is that transaction's start, which the
+     * test can read beforehand and use as the validity end. The validity end is
+     * truncated to seconds, the precision at which the models persist instants.
+     */
     public function test_a_confirmation_recorded_exactly_at_the_validity_end_keeps_a2(): void
     {
-        $boundary = Carbon::parse('2026-09-16 12:00:00');
         $owner = $this->makeActor('Owner');
         $profile = $this->makeProfile($this->makeResource($owner), 'privileged');
         $request = $this->makeAccessRequest($this->makeActor('Requester'), $profile, 'S4', 3600);
-        $grantedAccess = $this->makeGrantedAccess($request, $owner, $boundary);
+        $grantedAccess = $this->makeGrantedAccess($request, $owner, Carbon::now()->addHour());
 
-        Carbon::setTestNow($boundary);
+        DB::beginTransaction();
 
         try {
-            $confirmation = $this->action()->execute($grantedAccess->id, $owner->id);
+            DB::update(
+                "update granted_accesses set valid_until_at = date_trunc('second', transaction_timestamp()) where id = ?",
+                [$grantedAccess->id]
+            );
+            $boundary = $grantedAccess->fresh()->valid_until_at;
 
-            $this->assertTrue($confirmation->recorded_at->equalTo($boundary));
+            $confirmation = $this->action()->execute($grantedAccess->id, $owner->id);
+            $persisted = RevocationConfirmation::query()->findOrFail($confirmation->id);
+
+            $this->assertTrue($persisted->recorded_at->equalTo($boundary));
             $this->assertSame('A2', $this->derivedGrantedAccessState($grantedAccess));
         } finally {
-            Carbon::setTestNow();
+            DB::rollBack();
         }
     }
 

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\AccessGovernance\Actions;
 
+use App\AccessGovernance\Concurrency\FunctionalTransactionTime;
 use App\AccessGovernance\Concurrency\Rn03AdvisoryLock;
 use App\AccessGovernance\Exceptions\AccessRequestRuleViolation;
 use App\Models\AccessProfile;
 use App\Models\AccessRequest;
 use App\Models\GrantedAccess;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Database\Query\Builder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -27,6 +28,7 @@ final class CreateAccessRequest
 
     public function __construct(
         private readonly Rn03AdvisoryLock $rn03Lock = new Rn03AdvisoryLock(),
+        private readonly FunctionalTransactionTime $transactionTime = new FunctionalTransactionTime(),
     ) {
     }
 
@@ -65,7 +67,12 @@ final class CreateAccessRequest
             $duration = $this->resolveDuration($approvalFlow, $requestedDurationSeconds);
 
             $this->guardEquivalentRequestInProcessing($requesterActorReferenceId, $accessProfileId);
-            $this->guardEquivalentActiveAccess($requesterActorReferenceId, $accessProfileId);
+
+            // ADR-009: one PostgreSQL instant for the whole operation, used both
+            // to evaluate the active access and as the registration instant.
+            $functionalTransactionAt = $this->transactionTime->current();
+
+            $this->guardEquivalentActiveAccess($requesterActorReferenceId, $accessProfileId, $functionalTransactionAt);
 
             $request = new AccessRequest();
             $request->requester_actor_reference_id = $requesterActorReferenceId;
@@ -74,7 +81,7 @@ final class CreateAccessRequest
             $request->approval_flow = $approvalFlow;
             $request->requested_duration_seconds = $duration;
             $request->current_state = self::INITIAL_STATE;
-            $request->requested_at = Carbon::now();
+            $request->requested_at = $functionalTransactionAt;
             $request->save();
 
             return $request;
@@ -127,9 +134,15 @@ final class CreateAccessRequest
 
     /**
      * An equivalent Granted Access counts as A1 only when no revocation was
-     * confirmed and the validity period has not ended. A2 and A3 do not block.
+     * confirmed and the validity period has not ended at the operation's
+     * instant: a validity end equal to it has already ended. A2 and A3 do not
+     * block.
      */
-    private function guardEquivalentActiveAccess(string $requesterId, string $profileId): void
+    private function guardEquivalentActiveAccess(
+        string $requesterId,
+        string $profileId,
+        CarbonImmutable $functionalTransactionAt,
+    ): void
     {
         $exists = GrantedAccess::query()
             ->join('grant_confirmations', 'grant_confirmations.id', '=', 'granted_accesses.grant_confirmation_id')
@@ -141,9 +154,11 @@ final class CreateAccessRequest
                     ->from('revocation_confirmations')
                     ->whereColumn('revocation_confirmations.granted_access_id', 'granted_accesses.id');
             })
-            ->where(function (\Illuminate\Contracts\Database\Query\Builder $query): void {
+            ->where(function (\Illuminate\Contracts\Database\Query\Builder $query) use ($functionalTransactionAt): void {
+                // Bound with microseconds and offset, so the comparison uses the
+                // exact transaction instant rather than a value truncated to seconds.
                 $query->whereNull('granted_accesses.valid_until_at')
-                    ->orWhere('granted_accesses.valid_until_at', '>', Carbon::now());
+                    ->orWhere('granted_accesses.valid_until_at', '>', $functionalTransactionAt->format('Y-m-d H:i:s.uP'));
             })
             ->exists();
 

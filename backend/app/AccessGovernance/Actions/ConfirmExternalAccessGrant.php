@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\AccessGovernance\Actions;
 
+use App\AccessGovernance\Concurrency\FunctionalTransactionTime;
 use App\AccessGovernance\Concurrency\Rn03AdvisoryLock;
 use App\AccessGovernance\Exceptions\GrantConfirmationViolation;
 use App\Models\AccessRequest;
 use App\Models\Decision;
 use App\Models\GrantConfirmation;
 use App\Models\GrantedAccess;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -31,6 +32,7 @@ final class ConfirmExternalAccessGrant
 
     public function __construct(
         private readonly Rn03AdvisoryLock $rn03Lock = new Rn03AdvisoryLock(),
+        private readonly FunctionalTransactionTime $transactionTime = new FunctionalTransactionTime(),
     ) {
     }
 
@@ -69,8 +71,9 @@ final class ConfirmExternalAccessGrant
             $this->guardApprovalsAreComplete($request);
             $this->guardResourceOwnerAuthority($request, $actorReferenceId);
 
-            // One single instant for the whole functional result.
-            $recordedAt = Carbon::now();
+            // ADR-009: one PostgreSQL instant for the whole functional result,
+            // the recorded instant and the start of the effective validity.
+            $recordedAt = $this->transactionTime->current();
 
             $confirmation = new GrantConfirmation();
             $confirmation->access_request_id = $request->id;
@@ -137,12 +140,13 @@ final class ConfirmExternalAccessGrant
      * RN07: the effective validity starts at the confirmation instant. Standard
      * access has no calculable end.
      */
-    private function effectiveValidityEnd(AccessRequest $request, Carbon $recordedAt): ?Carbon
+    private function effectiveValidityEnd(AccessRequest $request, CarbonImmutable $recordedAt): ?CarbonImmutable
     {
         if ($request->approval_flow !== 'privileged') {
             return null;
         }
 
-        return $recordedAt->copy()->addSeconds((int) $request->requested_duration_seconds);
+        // A new immutable value; $recordedAt itself is left untouched.
+        return $recordedAt->addSeconds((int) $request->requested_duration_seconds);
     }
 }

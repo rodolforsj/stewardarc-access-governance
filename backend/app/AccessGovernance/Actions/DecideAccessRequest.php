@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\AccessGovernance\Actions;
 
+use App\AccessGovernance\Concurrency\FunctionalTransactionTime;
 use App\AccessGovernance\Exceptions\AccessDecisionRuleViolation;
 use App\Models\AccessRequest;
 use App\Models\Decision;
 use App\Models\GovernanceMembership;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -24,6 +24,11 @@ final class DecideAccessRequest
         'S1' => 'resource_owner',
         'S2' => 'governance',
     ];
+
+    public function __construct(
+        private readonly FunctionalTransactionTime $transactionTime = new FunctionalTransactionTime(),
+    ) {
+    }
 
     /**
      * The stage is never chosen by the caller: it is inferred from the current
@@ -74,13 +79,16 @@ final class DecideAccessRequest
                 );
             }
 
+            // ADR-009: the PostgreSQL instant of this transaction, read once.
+            $functionalTransactionAt = $this->transactionTime->current();
+
             $decision = new Decision();
             $decision->access_request_id = $request->id;
             $decision->stage = $stage;
             $decision->outcome = $outcome;
             $decision->actor_reference_id = $actorReferenceId;
             $decision->justification = $justification;
-            $decision->decided_at = Carbon::now();
+            $decision->decided_at = $functionalTransactionAt;
             $decision->save();
 
             $request->current_state = $this->nextState($request, $stage, $outcome);

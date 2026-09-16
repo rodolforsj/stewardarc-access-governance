@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\AccessGovernance\Actions;
 
+use App\AccessGovernance\Concurrency\FunctionalTransactionTime;
 use App\AccessGovernance\Concurrency\Rn03AdvisoryLock;
 use App\AccessGovernance\Exceptions\RevocationConfirmationViolation;
 use App\Models\GrantedAccess;
 use App\Models\RevocationConfirmation;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,6 +20,7 @@ final class RecordExternalAccessRevocation
 {
     public function __construct(
         private readonly Rn03AdvisoryLock $rn03Lock = new Rn03AdvisoryLock(),
+        private readonly FunctionalTransactionTime $transactionTime = new FunctionalTransactionTime(),
     ) {
     }
 
@@ -59,10 +60,13 @@ final class RecordExternalAccessRevocation
 
             $this->guardResourceOwnerAuthority($grantedAccess, $actorReferenceId);
 
+            // ADR-009: the PostgreSQL instant of this transaction, read once.
+            $functionalTransactionAt = $this->transactionTime->current();
+
             $confirmation = new RevocationConfirmation();
             $confirmation->granted_access_id = $grantedAccess->id;
             $confirmation->actor_reference_id = $actorReferenceId;
-            $confirmation->recorded_at = Carbon::now();
+            $confirmation->recorded_at = $functionalTransactionAt;
             $confirmation->save();
 
             return $confirmation;
