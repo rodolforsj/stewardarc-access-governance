@@ -179,6 +179,8 @@ A Granted Access has no status column. Its state is derived from the preserved f
 
 Consequences kept from ADR-003: a revocation confirmed after the validity has already ended leaves the access in `A2` while the confirmation remains preserved as a historical fact, and an access already in `A3` does not become `A2` as time passes.
 
+When this state is read by the compound projections of `UC-005` and `UC-006`, "the current time" is a single `projection_reference_at` — PostgreSQL `transaction_timestamp()` of the projection's `REPEATABLE READ READ ONLY` transaction — used for every access in the same projection ([ADR-008](adr/0008-read-projection-consistency-baseline.md)).
+
 No production SQL for this derivation is defined here.
 
 ## RN03 enforcement boundary
@@ -203,6 +205,15 @@ Functional History has no table of its own and is not an audit log, operational 
 - revocation confirmations (`revocation_confirmations`).
 
 When the history presents expiration, that milestone is derived from `valid_until_at` and time. There is no expiration table and no persisted expiration event.
+
+[ADR-008](adr/0008-read-projection-consistency-baseline.md) defines how this projection is read, without changing the schema:
+
+- the compound projection is read in one PostgreSQL `REPEATABLE READ READ ONLY` transaction, and one `projection_reference_at` is used for every temporal derivation in it;
+- each entry keeps its own temporal reference — `requested_at`, `decided_at` or `recorded_at` — and its actor, the requester or the fact's `actor_reference_id`;
+- the expiration milestone has `occurred_at = valid_until_at` and no actor, and it is projected only when expiration is the effective end of the access under the `A2` rule above;
+- a revocation confirmed before `valid_until_at` produces `A3`, and no "ended by expiration" milestone is projected later;
+- a revocation confirmed at or after `valid_until_at` leaves the access in `A2`: the expiration milestone and the revocation confirmation are both part of the history;
+- state changes and the creation of the Granted Access are not projected as separate entries, because the Decisions and the Grant Confirmation already represent them.
 
 ## Diagram
 
