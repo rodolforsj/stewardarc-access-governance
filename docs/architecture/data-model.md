@@ -250,7 +250,7 @@ erDiagram
 
 ## Not modeled yet
 
-- The OpenID Connect login itself, the production session store and the provisioning mechanism for Actor References.
+- The production session store and the provisioning mechanism for Actor References. The OpenID Connect login keeps its short-lived transaction in the session and persists no token.
 - More than one Resource Owner per resource.
 - The operational mechanism for provisioning and removing Governance memberships.
 - Any temporal history of a Governance membership.

@@ -5,6 +5,7 @@
     "description": "StewardArc backend application.",
     "require": {
         "php": "^8.3",
+        "facile-it/php-openid-client": "^1.0",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0"
     },
