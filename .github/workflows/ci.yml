@@ -1,0 +1,86 @@
+# Continuous integration baseline: runs the existing executable validations
+# (ADR-006) in the same Docker Compose environment used for local development.
+# Every credential below is an ephemeral local placeholder; no secret is used.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Backend and frontend validations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Prepare the local environment files
+        run: |
+          # compose.yaml runs the containers as ${UID}:${GID}; the runner user
+          # must own the files written into the bind-mounted checkout.
+          printf 'UID=%s\nGID=%s\n' "$(id -u)" "$(id -g)" > .env
+          cp backend/.env.example backend/.env
+
+      - name: Build the backend image
+        run: docker compose build
+
+      - name: Install backend dependencies
+        run: docker compose run --rm --no-deps backend composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Generate the application key
+        run: docker compose run --rm --no-deps backend php artisan key:generate --no-interaction
+
+      - name: Start PostgreSQL and the backend
+        run: docker compose up -d --wait postgres backend
+
+      - name: Create and migrate the test database
+        run: |
+          docker compose exec -T postgres createdb -U stewardarc stewardarc_test
+          docker compose exec -T -e DB_DATABASE=stewardarc_test backend php artisan migrate --force --no-interaction
+
+      - name: Check the health endpoint
+        run: |
+          for attempt in $(seq 1 30); do
+            status="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/up || true)"
+            if [ "$status" = "200" ]; then
+              echo "GET /up -> 200"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "GET /up did not return 200 (last status: ${status})"
+          exit 1
+
+      - name: Run the stock test suite
+        run: docker compose exec -T backend composer test
+
+      - name: Run the PostgreSQL test suite (including concurrency tests)
+        run: docker compose exec -T backend vendor/bin/phpunit -c phpunit.postgresql.xml
+
+      - name: Install frontend dependencies
+        run: docker compose run --rm --no-deps frontend npm ci
+
+      - name: Lint the frontend
+        run: docker compose run --rm --no-deps frontend npm run lint
+
+      - name: Build the frontend
+        run: docker compose run --rm --no-deps frontend npm run build
+
+      - name: Show container logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop the environment
+        if: always()
+        run: docker compose down -v

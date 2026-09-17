@@ -1,5 +1,7 @@
 # StewardArc
 
+[![CI](https://github.com/rodolforsj/stewardarc-access-governance/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rodolforsj/stewardarc-access-governance/actions/workflows/ci.yml)
+
 **Govern access requests through accountable decisions and recorded outcomes.**
 
 StewardArc is an engineering case study in **access request governance**. It defines a product that lets an organization record, in a traceable way, who requested which access and why, who authorized it and through which decision path, when the external grant was confirmed, how long the access is valid, whether it was revoked, and the history behind each outcome.
@@ -97,6 +99,17 @@ docker compose exec backend vendor/bin/phpunit -c phpunit.postgresql.xml
 ```
 
 They refuse to run unless the driver is PostgreSQL and the database name ends with `_test`.
+
+### Continuous integration
+
+The [CI workflow](.github/workflows/ci.yml) runs on every push and pull request to `main`, and can be started manually. It uses the same Docker Compose environment and steps as above, with ephemeral placeholder credentials and read-only repository permissions, and checks that:
+
+- `GET /up` returns 200;
+- the scaffold's stock tests pass (`composer test`);
+- the full PostgreSQL suite passes, including its concurrency tests;
+- the frontend lints and builds (`npm run lint`, `npm run build`).
+
+It does not deploy, publish or release anything.
 
 ## About this project
 
