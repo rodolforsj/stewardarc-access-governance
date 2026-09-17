@@ -118,7 +118,7 @@ Notes:
 - **Primary actor:** Requester.
 - **Goal:** request access to an available profile for themselves.
 - **Outcome:** a valid request is registered in `S1`, following the Standard or Privileged flow.
-- **Rules:** `RN01`, `RN02`, `RN03`, `RN07`, `RN11`.
+- **Rules:** `RN01`, `RN02`, `RN03`, `RN07`, `RN11`, `RN12`.
 - **Requirements:** `RF-001`, `RF-002`, `RF-003`.
 
 ### UC-002 — Decide access request
@@ -167,7 +167,7 @@ Notes:
 | ID | Verifiable behavior |
 | --- | --- |
 | CA-001 | Consulting the catalog shows the profiles available for new requests. |
-| CA-002 | A valid request is registered and enters its lifecycle. |
+| CA-002 | A valid request, with a non-blank justification, is registered and enters its lifecycle; the justification is kept as stated. |
 | CA-003 | A request for an unavailable profile is prevented. |
 | CA-004 | A request on behalf of another user is prevented. |
 | CA-005 | A duplicate request is prevented while an equivalent request is in progress or an equivalent access is active. |
@@ -187,6 +187,7 @@ Notes:
 | CA-019 | After an access ends, a new need requires a new request; there is no direct renewal or reactivation. |
 | CA-020 | See [CA-020](#ca-020--consultation-scopes). |
 | CA-021 | See [CA-021](#ca-021--functional-history-content). |
+| CA-022 | A request with an empty or blank justification is prevented (`RN12`). |
 
 ### CA-017 — Expiration of a Privileged access
 

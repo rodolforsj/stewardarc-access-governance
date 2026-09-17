@@ -7,7 +7,10 @@ namespace Tests\PostgreSQL\AccessGovernance;
 use App\AccessGovernance\Actions\CreateAccessRequest;
 use App\AccessGovernance\Exceptions\AccessRequestRuleViolation;
 use App\Models\AccessRequest;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
@@ -238,6 +241,81 @@ final class CreateAccessRequestTest extends PostgresTestCase
 
         $this->assertSame($requester->id, AccessRequest::query()->findOrFail($request->id)->requester_actor_reference_id);
         $this->assertSame(0, AccessRequest::query()->where('requester_actor_reference_id', $other->id)->count());
+    }
+
+    /** CA-022 / RN12: a blank justification is refused and nothing is registered. */
+    #[DataProvider('blankJustifications')]
+    public function test_rejects_a_blank_justification(string $justification, string $classification, ?int $duration): void
+    {
+        $requester = $this->makeActor('Requester');
+        $profile = $this->makeProfile($this->makeResource($this->makeActor('Owner')), $classification);
+
+        $violation = $this->assertRuleViolation(
+            fn () => $this->action()->execute($requester->id, $profile->id, $justification, $duration)
+        );
+
+        $this->assertSame('RN12', $violation->ruleId);
+        $this->assertSame(0, AccessRequest::query()->count());
+    }
+
+    /** @return array<string, array{string, string, int|null}> */
+    public static function blankJustifications(): array
+    {
+        return [
+            'empty' => ['', 'standard', null],
+            'one space' => [' ', 'standard', null],
+            'several spaces' => ['    ', 'standard', null],
+            'tabs and newlines' => ["\t\n \r\n\t", 'standard', null],
+            'empty on a privileged profile' => ['', 'privileged', 3600],
+            'whitespace on a privileged profile' => ["  \n  ", 'privileged', 3600],
+        ];
+    }
+
+    /** CA-002 / RN12: any non-blank justification is accepted and persisted exactly as received. */
+    #[DataProvider('nonBlankJustifications')]
+    public function test_persists_a_non_blank_justification_without_trimming_it(string $justification, string $classification, ?int $duration): void
+    {
+        $requester = $this->makeActor('Requester');
+        $profile = $this->makeProfile($this->makeResource($this->makeActor('Owner')), $classification);
+
+        $request = $this->action()->execute($requester->id, $profile->id, $justification, $duration);
+
+        $persisted = AccessRequest::query()->findOrFail($request->id);
+        $this->assertSame($justification, $request->justification);
+        $this->assertSame($justification, $persisted->justification);
+        $this->assertSame('S1', $persisted->current_state);
+        $this->assertSame($classification, $persisted->approval_flow);
+        $this->assertSame($duration, $persisted->requested_duration_seconds);
+    }
+
+    /** @return array<string, array{string, string, int|null}> */
+    public static function nonBlankJustifications(): array
+    {
+        return [
+            'single character' => ['A', 'standard', null],
+            'sentence' => ['Necessário para executar minha função.', 'standard', null],
+            'surrounding spaces' => [' acesso necessário ', 'standard', null],
+            'surrounding whitespace on a privileged profile' => ["\n\t acesso necessário \t\n", 'privileged', 3600],
+        ];
+    }
+
+    /** RN12 is checked on the input before any database access, lock included. */
+    public function test_a_blank_justification_is_refused_before_touching_the_database(): void
+    {
+        $requester = $this->makeActor('Requester');
+        $queries = [];
+        DB::listen(static function (QueryExecuted $query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
+
+        // The profile does not even exist: RN12 is decided first.
+        $violation = $this->assertRuleViolation(
+            fn () => $this->action()->execute($requester->id, (string) Str::uuid7(), '   ')
+        );
+
+        $this->assertSame('RN12', $violation->ruleId);
+        $this->assertSame([], $queries);
+        $this->assertSame(0, DB::transactionLevel());
     }
 
     private function assertRuleViolation(callable $operation): AccessRequestRuleViolation

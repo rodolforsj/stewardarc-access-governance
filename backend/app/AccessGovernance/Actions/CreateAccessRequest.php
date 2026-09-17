@@ -42,6 +42,15 @@ final class CreateAccessRequest
         string $justification,
         ?int $requestedDurationSeconds = null,
     ): AccessRequest {
+        // RN12: checked on the input alone, before any lock or query. The trim
+        // only decides blankness; the justification is persisted as received.
+        if (trim($justification) === '') {
+            throw new AccessRequestRuleViolation(
+                'RN12',
+                'An access request requires a justification that is not blank.'
+            );
+        }
+
         return DB::transaction(function () use (
             $requesterActorReferenceId,
             $accessProfileId,

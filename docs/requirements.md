@@ -15,6 +15,7 @@ Identifiers are preserved from the original baseline and are normative:
 | `RNF` | Non-functional requirement |
 | `UC` | Use case |
 | `CA` | Acceptance criterion |
+| `D` | Approved functional decision |
 
 ## Cross-cutting assumptions
 
@@ -28,7 +29,7 @@ Identifiers are preserved from the original baseline and are normative:
 | ID | Requirement | Description |
 | --- | --- | --- |
 | RF-001 | Consult access catalog | Users can consult the access profiles available for new requests. |
-| RF-002 | Register access request | The Requester registers a request for themselves, selecting an available access profile, stating a justification and, when required by the profile, the applicable validity information. The request enters its lifecycle. |
+| RF-002 | Register access request | The Requester registers a request for themselves, selecting an available access profile, stating a non-blank justification (`RN12`) and, when required by the profile, the applicable validity information. The request enters its lifecycle. |
 | RF-003 | Determine approval flow | StewardArc determines whether the request follows the Standard or the Privileged approval flow, according to the requested profile. |
 | RF-004 | Consult pending approvals | Deciding actors consult the requests pending their decision, restricted to their authority. |
 | RF-005 | Record approval/rejection decision | The authority of the currently pending step (the Resource Owner, or Governance for the Privileged step) records an approval or a justified rejection. |
@@ -54,6 +55,7 @@ Identifiers are preserved from the original baseline and are normative:
 | RN09 | Authority and sequence | Only the authority of the currently pending step can decide. Governance does not decide before the Resource Owner's approval. |
 | RN10 | Approval ≠ grant | A grant can only be confirmed after all required approvals. |
 | RN11 | Resource Owner restriction | A Resource Owner cannot, in this flow, request for themselves a profile that belongs to a resource they are responsible for. |
+| RN12 | Mandatory justification | The justification of an access request must contain at least one non-blank character. |
 
 ### RN07 — Privileged validity
 
@@ -71,6 +73,7 @@ The rule sets no minimum unit, no whole-day requirement, no hour granularity and
 - **Revocation is external.** The Resource Owner records the confirmation of a revocation performed elsewhere; StewardArc does not perform it. An active access (`A1`) moves to `A3`. An access already in `A2` remains in `A2`, and the revocation confirmation is preserved as an additional history event.
 - **No direct renewal or reactivation.** After a Granted Access ends, a later need requires a new request.
 - **RF-008 has no use case.** It is automatic, time-based behavior rather than an actor's goal; its objective coverage is `CA-017`.
+- **D1.14 — Mandatory justification.** An access request must state a justification whose content, disregarding whitespace at its ends, is not empty. This only decides whether the justification is blank: the justification is kept exactly as stated, and no minimum or maximum length, normalization or content rule is defined.
 - **Functional history ≠ operational telemetry.** The history of a request is part of the product's functional behavior. Operational diagnostics and event correlation are a separate concern.
 
 ## Non-functional requirements

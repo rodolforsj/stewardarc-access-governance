@@ -22,7 +22,7 @@ Definitions: [requirements.md](requirements.md) · [behavior.md](behavior.md).
 | RF | Business rules | Use case / flow | Acceptance criteria |
 | --- | --- | --- | --- |
 | RF-001 Consult access catalog | RN01 | UC-001 | CA-001 |
-| RF-002 Register access request | RN01, RN02, RN03, RN07, RN11 | UC-001 | CA-002, CA-003, CA-004, CA-005, CA-006, CA-007 |
+| RF-002 Register access request | RN01, RN02, RN03, RN07, RN11, RN12 | UC-001 | CA-002, CA-003, CA-004, CA-005, CA-006, CA-007, CA-022 |
 | RF-003 Determine approval flow | RN05, RN06 | UC-001; Standard and Privileged flows | CA-009, CA-010 |
 | RF-004 Consult pending approvals | RN09 | UC-002 | CA-008 |
 | RF-005 Record approval/rejection decision | RN04, RN05, RN06, RN08, RN09 | UC-002; Standard and Privileged flows | CA-009, CA-010, CA-011, CA-012, CA-013 |
