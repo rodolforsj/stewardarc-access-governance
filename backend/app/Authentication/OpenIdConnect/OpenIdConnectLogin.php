@@ -44,7 +44,10 @@ final class OpenIdConnectLogin
 
     /**
      * Completes a login from the callback query parameters. The pending
-     * transaction is consumed first, whatever the outcome.
+     * transaction is consumed only once the response is correlated to it by
+     * its `state`, whether it carries a code or an error (RFC 6749, sections
+     * 4.1.2, 4.1.2.1 and 10.12): a response without the right `state` cannot
+     * cancel the pending login.
      *
      * @param  array<string, mixed>  $callback
      *
@@ -53,18 +56,16 @@ final class OpenIdConnectLogin
      */
     public function complete(Session $session, array $callback): ActorReference
     {
-        $transaction = LoginTransaction::fromArray($session->pull(self::TRANSACTION_SESSION_KEY));
+        $transaction = LoginTransaction::fromArray($session->get(self::TRANSACTION_SESSION_KEY));
 
         if ($transaction === null) {
             throw OpenIdConnectFailure::because(OpenIdConnectFailure::MISSING_TRANSACTION);
         }
 
         if ($transaction->isExpiredAt(now()->getTimestamp())) {
-            throw OpenIdConnectFailure::because(OpenIdConnectFailure::EXPIRED_TRANSACTION);
-        }
+            $session->forget(self::TRANSACTION_SESSION_KEY);
 
-        if (array_key_exists('error', $callback)) {
-            throw OpenIdConnectFailure::because(OpenIdConnectFailure::PROVIDER_ERROR);
+            throw OpenIdConnectFailure::because(OpenIdConnectFailure::EXPIRED_TRANSACTION);
         }
 
         $state = $callback['state'] ?? null;
@@ -75,6 +76,13 @@ final class OpenIdConnectLogin
 
         if (! $transaction->matchesState($state)) {
             throw OpenIdConnectFailure::because(OpenIdConnectFailure::STATE_MISMATCH);
+        }
+
+        // The response belongs to this login: the transaction is used up.
+        $session->forget(self::TRANSACTION_SESSION_KEY);
+
+        if (array_key_exists('error', $callback)) {
+            throw OpenIdConnectFailure::because(OpenIdConnectFailure::PROVIDER_ERROR);
         }
 
         $code = $callback['code'] ?? null;

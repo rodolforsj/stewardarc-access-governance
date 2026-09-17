@@ -175,6 +175,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertTrue(Auth::check());
         $this->assertSame($actor->id, Auth::id());
         $this->assertFalse(Auth::viaRemember());
+        $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
         $response->assertCookieMissing(Auth::guard()->getRecallerName());
 
         // The code was exchanged once, with the PKCE verifier and HTTP Basic client authentication.
@@ -299,10 +300,19 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
     }
 
+    /**
+     * A response is correlated to the pending login only by its exact `state`
+     * (RFC 6749, sections 4.1.2 and 4.1.2.1). Only a correlated response, with
+     * a code or an error, uses up the transaction; any other response fails
+     * without cancelling the pending login.
+     */
     #[DataProvider('rejectedCallbacks')]
-    public function test_an_unusable_authorization_response_fails_before_the_token_exchange(string $case, string $reason): void
-    {
-        $this->provisionedActor();
+    public function test_an_unusable_authorization_response_fails_before_the_token_exchange(
+        string $case,
+        string $reason,
+        bool $consumesTransaction,
+    ): void {
+        $actor = $this->provisionedActor();
         $this->get('/auth/login');
         $transaction = $this->transaction();
 
@@ -310,52 +320,105 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
 
         $this->assertAuthenticationFailed($response);
         $this->assertSame([], $this->provider->tokenRequests());
-        $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
-        $this->assertStringNotContainsString($transaction['state'], $this->sessionDump());
+        $this->assertStringNotContainsString('?', (string) session('_previous.url'));
+        $this->assertSame([], $this->logged);
 
-        // The transaction was consumed: even the right response now fails.
-        $this->assertAuthenticationFailed($this->sendCallback(['code' => self::CODE, 'state' => $transaction['state']]));
-        $this->assertSame([], $this->provider->tokenRequests());
+        if ($consumesTransaction) {
+            $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
+            $this->assertStringNotContainsString($transaction['state'], $this->sessionDump());
 
-        $this->assertFailureReason($reason, function (OpenIdConnectLogin $login) use ($case): void {
+            // Even the right response can no longer use the transaction.
+            $this->assertAuthenticationFailed($this->sendCallback(['code' => self::CODE, 'state' => $transaction['state']]));
+            $this->assertSame([], $this->provider->tokenRequests());
+        } else {
+            $this->assertSame($transaction, $this->transaction());
+
+            // The pending login still completes with its own response, once.
+            $this->provider->idToken = $this->provider->signedIdToken($this->provider->claims($transaction['nonce']));
+            $this->sendCallback(['code' => self::CODE, 'state' => $transaction['state']])->assertRedirect('/');
+            $this->assertSame($actor->id, Auth::id());
+            $this->assertCount(1, $this->provider->tokenRequests());
+            $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
+
+            Auth::logout();
+        }
+
+        $tokenRequests = count($this->provider->tokenRequests());
+
+        // In the login service, the intended check is the one that failed.
+        $this->assertFailureReason($reason, function (OpenIdConnectLogin $login) use ($case, $consumesTransaction): void {
             $login->begin(session()->driver());
-            $login->complete(session()->driver(), $this->authorizationResponse($case, $this->transaction()['state']));
-        });
-        $this->assertSame([], $this->provider->tokenRequests());
+            $pending = $this->transaction();
+
+            try {
+                $login->complete(session()->driver(), $this->authorizationResponse($case, $pending['state']));
+            } finally {
+                if ($consumesTransaction) {
+                    $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
+                } else {
+                    $this->assertSame($pending, $this->transaction());
+                }
+            }
+        }, transactionRemains: ! $consumesTransaction);
+
+        $this->assertCount($tokenRequests, $this->provider->tokenRequests());
+        $this->assertFalse(Auth::check());
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function authorizationResponse(string $case, string $state): array
     {
+        $otherState = FakeOpenIdProvider::base64Url(random_bytes(32));
+
         return match ($case) {
-            'missing state' => ['code' => self::CODE],
-            'empty state' => ['code' => self::CODE, 'state' => ''],
-            'different state' => ['code' => self::CODE, 'state' => FakeOpenIdProvider::base64Url(random_bytes(32))],
-            'state of another shape' => ['code' => self::CODE, 'state' => $state.'x'],
-            'missing code' => ['state' => $state],
-            'empty code' => ['code' => '', 'state' => $state],
-            'provider error' => ['error' => 'access_denied', 'error_description' => 'The user refused.', 'state' => $state],
-            'provider error with a code' => ['error' => 'server_error', 'code' => self::CODE, 'state' => $state],
+            'code without state' => ['code' => self::CODE],
+            'code with an empty state' => ['code' => self::CODE, 'state' => ''],
+            'code with a list as state' => ['code' => self::CODE, 'state' => [$state]],
+            'code with a different state' => ['code' => self::CODE, 'state' => $otherState],
+            'code with a longer state' => ['code' => self::CODE, 'state' => $state.'x'],
+            'error without state' => ['error' => 'access_denied'],
+            'error with an empty state' => ['error' => 'access_denied', 'state' => ''],
+            'error with a different state' => ['error' => 'access_denied', 'state' => $otherState],
+            'error with the right state' => ['error' => 'access_denied', 'error_description' => 'The user refused.', 'state' => $state],
+            'error and code with the right state' => ['error' => 'server_error', 'code' => self::CODE, 'state' => $state],
+            'right state without code' => ['state' => $state],
+            'right state with an empty code' => ['code' => '', 'state' => $state],
+            'right state with a list as code' => ['code' => [self::CODE], 'state' => $state],
         };
     }
 
     /**
-     * @return array<string, array{string, string}>
+     * @return array<string, array{string, string, bool}>
      */
     public static function rejectedCallbacks(): array
     {
-        return [
-            'missing state' => ['missing state', OpenIdConnectFailure::MISSING_STATE],
-            'empty state' => ['empty state', OpenIdConnectFailure::MISSING_STATE],
-            'different state' => ['different state', OpenIdConnectFailure::STATE_MISMATCH],
-            'state of another shape' => ['state of another shape', OpenIdConnectFailure::STATE_MISMATCH],
-            'missing code' => ['missing code', OpenIdConnectFailure::MISSING_CODE],
-            'empty code' => ['empty code', OpenIdConnectFailure::MISSING_CODE],
-            'provider error' => ['provider error', OpenIdConnectFailure::PROVIDER_ERROR],
-            'provider error with a code' => ['provider error with a code', OpenIdConnectFailure::PROVIDER_ERROR],
+        $cases = [
+            // Not correlated: the pending transaction is kept.
+            'code without state' => [OpenIdConnectFailure::MISSING_STATE, false],
+            'code with an empty state' => [OpenIdConnectFailure::MISSING_STATE, false],
+            'code with a list as state' => [OpenIdConnectFailure::MISSING_STATE, false],
+            'code with a different state' => [OpenIdConnectFailure::STATE_MISMATCH, false],
+            'code with a longer state' => [OpenIdConnectFailure::STATE_MISMATCH, false],
+            'error without state' => [OpenIdConnectFailure::MISSING_STATE, false],
+            'error with an empty state' => [OpenIdConnectFailure::MISSING_STATE, false],
+            'error with a different state' => [OpenIdConnectFailure::STATE_MISMATCH, false],
+            // Correlated by the right state: the transaction is used up.
+            'error with the right state' => [OpenIdConnectFailure::PROVIDER_ERROR, true],
+            'error and code with the right state' => [OpenIdConnectFailure::PROVIDER_ERROR, true],
+            'right state without code' => [OpenIdConnectFailure::MISSING_CODE, true],
+            'right state with an empty code' => [OpenIdConnectFailure::MISSING_CODE, true],
+            'right state with a list as code' => [OpenIdConnectFailure::MISSING_CODE, true],
         ];
+
+        $data = [];
+
+        foreach ($cases as $case => [$reason, $consumesTransaction]) {
+            $data[$case] = [$case, $reason, $consumesTransaction];
+        }
+
+        return $data;
     }
 
     public function test_a_callback_cannot_be_replayed(): void
@@ -544,7 +607,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
     /**
      * @param  callable(OpenIdConnectLogin): void  $attempt
      */
-    private function assertFailureReason(string $reason, callable $attempt): void
+    private function assertFailureReason(string $reason, callable $attempt, bool $transactionRemains = false): void
     {
         $this->resetProvider();
 
@@ -559,8 +622,8 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
             $this->resetProvider();
         }
 
-        // Whatever failed, no pending transaction is left behind.
-        $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
+        // Only a response that was not correlated leaves the transaction pending.
+        $this->assertSame($transactionRemains, session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
     }
 
     private function resetProvider(): void
