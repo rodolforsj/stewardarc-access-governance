@@ -1,0 +1,74 @@
+{
+  "realm": "stewardarc-demo",
+  "displayName": "StewardArc local demonstration",
+  "enabled": true,
+  "sslRequired": "external",
+  "defaultSignatureAlgorithm": "RS256",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "clients": [
+    {
+      "clientId": "stewardarc-backend",
+      "name": "StewardArc backend (local demonstration)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "demo-only-stewardarc-backend-client-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "consentRequired": false,
+      "frontchannelLogout": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [
+        "http://localhost:8000/auth/callback"
+      ],
+      "webOrigins": [],
+      "defaultClientScopes": [
+        "basic"
+      ],
+      "optionalClientScopes": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "use.refresh.tokens": "false"
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": "d007fc4c-d9a1-4f9f-8a7b-294f3c08c8b8",
+      "username": "demo-requester",
+      "enabled": true,
+      "email": "demo-requester@stewardarc.test",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Requester",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-only-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "5738d161-928d-4d15-ad93-6d74863a54f6",
+      "username": "demo-unprovisioned",
+      "enabled": true,
+      "email": "demo-unprovisioned@stewardarc.test",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Unprovisioned",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo-only-password",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

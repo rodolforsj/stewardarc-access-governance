@@ -46,5 +46,37 @@ services:
     ports:
       - "5173:5173"
 
+  # Optional OpenID Provider for the local login demonstration only (README,
+  # "Local OpenID Connect demonstration"). It starts only with the idp profile
+  # and nothing depends on it. Development mode keeps its database inside the
+  # container, so recreating the container re-imports the demo realm, whose
+  # client secret and passwords are public, demo-only values.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    profiles: [idp]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: dev-file
+      # One issuer for the browser and the backend: the host resolves this name
+      # through a hosts entry, the containers through the network alias below.
+      KC_HOSTNAME: http://idp.stewardarc.test:8080
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/stewardarc-demo-realm.json:/opt/keycloak/data/import/stewardarc-demo-realm.json:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      default:
+        aliases:
+          - idp.stewardarc.test
+    healthcheck:
+      # Readiness on the management port, which stays unpublished; the image
+      # has no curl.
+      test: ["CMD-SHELL", "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
 volumes:
   postgres-data:
