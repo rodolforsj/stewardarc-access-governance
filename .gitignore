@@ -1,0 +1,14 @@
+# Local artifacts at the repository root. The backend and the frontend keep
+# their own rules in backend/.gitignore and frontend/.gitignore.
+
+# Docker Compose settings of this machine, such as UID and GID (README,
+# "Running locally"). The Laravel configuration is backend/.env instead.
+/.env
+
+# Editors at the repository root.
+/.idea/
+/.vscode/
+
+# Operating system files, anywhere.
+.DS_Store
+Thumbs.db

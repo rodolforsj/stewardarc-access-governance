@@ -26,8 +26,9 @@ services:
     volumes:
       - ./backend:/app
     command: php artisan serve --host=0.0.0.0 --port=8000
+    # A development server in debug mode: published on the host's loopback only.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,8 +44,9 @@ services:
     volumes:
       - ./frontend:/app
     command: npm run dev -- --host 0.0.0.0 --port 5173
+    # A development server: published on the host's loopback only.
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
 
   # Optional OpenID Provider for the local login demonstration only (README,
   # "Local OpenID Connect demonstration"). It starts only with the idp profile

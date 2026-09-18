@@ -69,6 +69,14 @@ StewardArc governs the decision and the record of access. It is **not** an IAM p
 
 The local environment runs with Docker Compose only; PHP, Composer and Node do not need to be installed on the host. It contains the backend, the frontend and PostgreSQL, and is intended for local development only.
 
+The containers run as `${UID:-1000}:${GID:-1000}`, so that what they write into the bind-mounted `backend/` and `frontend/` directories belongs to your user. Shells usually do not export `UID` and `GID` to Docker Compose, so on Linux, when your user and group IDs are not `1000:1000`, first write them into a `.env` file at the repository root:
+
+```bash
+printf 'UID=%s\nGID=%s\n' "$(id -u)" "$(id -g)" > .env
+```
+
+This root `.env` is optional, is read by Docker Compose only, holds nothing but these container settings and is ignored by Git: it is not the application's configuration. The Laravel settings live in `backend/.env`, created below from `backend/.env.example` and ignored by `backend/.gitignore`. With the default IDs, and usually with Docker Desktop on Windows and macOS, the root `.env` is not needed.
+
 ```bash
 cp backend/.env.example backend/.env
 docker compose build
@@ -80,6 +88,8 @@ docker compose up -d
 
 - Backend health check: http://localhost:8000/up
 - Frontend: http://localhost:5173
+
+Both are development servers, the backend in debug mode, so they are published on the host's loopback interface only: they answer at `localhost` on this machine and not from the rest of the network.
 
 Stop the environment with `docker compose down`. Add `-v` to also remove the local database volume. If the optional local identity provider below was started, use `docker compose --profile idp down` instead: a plain `down` leaves it running.
 
