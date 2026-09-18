@@ -97,6 +97,10 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // ADR-012: a failed statement must not carry its binding values
+            // into an exception message. This is the baseline for every
+            // environment, not a local option.
+            'mask_bindings_in_exception_messages' => true,
         ],
 
         'sqlsrv' => [

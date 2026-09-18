@@ -29,6 +29,10 @@
         <env name="DB_DATABASE" value="stewardarc_test"/>
         <env name="DB_USERNAME" value="stewardarc"/>
         <env name="DB_PASSWORD" value="stewardarc"/>
+        <!-- Failure paths produce operational records (ADR-012); the suite
+             never writes them to storage/logs. Tests that assert on records
+             capture them explicitly. -->
+        <env name="LOG_CHANNEL" value="null"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

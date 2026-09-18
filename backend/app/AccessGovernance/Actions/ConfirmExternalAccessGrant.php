@@ -11,6 +11,7 @@ use App\Models\AccessRequest;
 use App\Models\Decision;
 use App\Models\GrantConfirmation;
 use App\Models\GrantedAccess;
+use App\Observability\OperationContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\DB;
 final class ConfirmExternalAccessGrant
 {
     private const AWAITING_GRANT = 'S3';
+
+    /** This operation in operational records (ADR-012). */
+    private const OPERATION = 'access_grant.confirm';
 
     private const GRANT_CONFIRMED = 'S4';
 
@@ -42,7 +46,10 @@ final class ConfirmExternalAccessGrant
      */
     public function execute(string $accessRequestId, string $actorReferenceId): GrantConfirmation
     {
-        return DB::transaction(function () use ($accessRequestId, $actorReferenceId): GrantConfirmation {
+        return OperationContext::run(self::OPERATION, fn (): GrantConfirmation => DB::transaction(function () use (
+            $accessRequestId,
+            $actorReferenceId,
+        ): GrantConfirmation {
             // Structural pre-read, used only to derive the RN03 advisory key.
             // The requester and the profile of a request are not changed by the
             // functional operations of the MVP (ADR-006).
@@ -90,7 +97,7 @@ final class ConfirmExternalAccessGrant
             $request->save();
 
             return $confirmation;
-        });
+        }));
     }
 
     /**

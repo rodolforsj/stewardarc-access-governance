@@ -9,6 +9,7 @@ use App\AccessGovernance\Exceptions\AccessDecisionRuleViolation;
 use App\Models\AccessRequest;
 use App\Models\Decision;
 use App\Models\GovernanceMembership;
+use App\Observability\OperationContext;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -18,6 +19,9 @@ use InvalidArgumentException;
  */
 final class DecideAccessRequest
 {
+    /** This operation in operational records (ADR-012). */
+    private const OPERATION = 'access_request.decide';
+
     private const OUTCOMES = ['approved', 'rejected'];
 
     private const STAGE_BY_STATE = [
@@ -44,7 +48,7 @@ final class DecideAccessRequest
             throw new InvalidArgumentException('The outcome must be either approved or rejected.');
         }
 
-        return DB::transaction(function () use (
+        return OperationContext::run(self::OPERATION, fn (): Decision => DB::transaction(function () use (
             $accessRequestId,
             $actorReferenceId,
             $outcome,
@@ -95,7 +99,7 @@ final class DecideAccessRequest
             $request->save();
 
             return $decision;
-        });
+        }));
     }
 
     /**

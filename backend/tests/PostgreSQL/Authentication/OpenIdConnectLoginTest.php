@@ -27,9 +27,12 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
 {
     private const CODE = 'test-authorization-code';
 
+    /** The telemetry reason of an identity with no Actor Reference (ADR-012). */
+    private const UNRESOLVED_EXTERNAL_IDENTITY = 'unresolved_external_identity';
+
     private FakeOpenIdProvider $provider;
 
-    /** @var list<string> */
+    /** @var list<array{level: string, message: string, context: array<string, mixed>}> */
     private array $logged = [];
 
     protected function setUp(): void
@@ -47,7 +50,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->app->instance(OpenIdConnectClient::class, new OpenIdConnectClient($this->provider->httpClient()));
 
         Event::listen(MessageLogged::class, function (MessageLogged $event): void {
-            $this->logged[] = $event->message;
+            $this->logged[] = ['level' => $event->level, 'message' => $event->message, 'context' => $event->context];
         });
     }
 
@@ -144,6 +147,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         }
 
         $this->assertSame(0, $this->provider->requestCount());
+        $this->assertLoggedFor(OpenIdConnectFailure::CONFIGURATION, 4);
     }
 
     public function test_login_fails_closed_when_the_provider_metadata_is_unusable(): void
@@ -157,6 +161,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertAuthenticationFailed($this->get('/auth/login'));
 
         $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
+        $this->assertLoggedFor(OpenIdConnectFailure::PROVIDER_METADATA, 2);
     }
 
     // ------------------------------------------------------------------
@@ -281,6 +286,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
 
         $this->assertAuthenticationFailed($this->sendCallback(['code' => self::CODE, 'state' => 'any-state']));
         $this->assertSame(0, $this->provider->requestCount());
+        $this->assertLoggedFor(OpenIdConnectFailure::MISSING_TRANSACTION);
     }
 
     public function test_an_expired_transaction_fails_and_is_consumed(): void
@@ -298,6 +304,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertAuthenticationFailed($this->sendCallback(['code' => self::CODE, 'state' => $transaction['state']]));
         $this->assertSame([], $this->provider->tokenRequests());
         $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
+        $this->assertLoggedFor(OpenIdConnectFailure::EXPIRED_TRANSACTION);
     }
 
     /**
@@ -321,7 +328,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertAuthenticationFailed($response);
         $this->assertSame([], $this->provider->tokenRequests());
         $this->assertStringNotContainsString('?', (string) session('_previous.url'));
-        $this->assertSame([], $this->logged);
+        $this->assertLoggedFor($reason);
 
         if ($consumesTransaction) {
             $this->assertFalse(session()->has(OpenIdConnectLogin::TRANSACTION_SESSION_KEY));
@@ -436,6 +443,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertFalse(Auth::check());
         $this->assertCount(1, $this->provider->tokenRequests());
         $this->assertNotNull($actor->fresh());
+        $this->assertLoggedFor(OpenIdConnectFailure::MISSING_TRANSACTION);
     }
 
     public function test_an_unknown_identity_is_not_logged_in_or_created(): void
@@ -453,6 +461,8 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertCount(1, $this->provider->tokenRequests());
         $this->assertEquals($before, DB::table('actor_references')->orderBy('id')->get()->all());
         $this->assertStringNotContainsString('not-provisioned', $this->sessionDump());
+        $this->assertLoggedFor(self::UNRESOLVED_EXTERNAL_IDENTITY);
+        $this->assertStringNotContainsString('not-provisioned', (string) json_encode($this->logged));
     }
 
     public function test_the_failure_response_reveals_nothing(): void
@@ -470,9 +480,10 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
             $this->assertStringNotContainsString($secret, (string) $response->getContent());
             $this->assertStringNotContainsString($secret, (string) $response->headers);
             $this->assertStringNotContainsString($secret, $this->sessionDump());
+            $this->assertStringNotContainsString($secret, (string) json_encode($this->logged));
         }
 
-        $this->assertSame([], $this->logged);
+        $this->assertLoggedFor(OpenIdConnectFailure::ID_TOKEN);
     }
 
     // ------------------------------------------------------------------
@@ -495,7 +506,7 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertStringNotContainsString($transaction['nonce'], $this->sessionDump());
         $this->assertStringNotContainsString($transaction['code_verifier'], $this->sessionDump());
         $this->assertNotNull($actor->fresh());
-        $this->assertSame([], $this->logged);
+        $this->assertLoggedFor($reason);
 
         // Through the login service: the intended check is the one that failed.
         $this->assertFailureReason($reason, function (OpenIdConnectLogin $login) use ($case): void {
@@ -664,6 +675,30 @@ final class OpenIdConnectLoginTest extends PostgresTestCase
         $this->assertIsArray($transaction, 'A login transaction was expected in the session.');
 
         return $transaction;
+    }
+
+    /**
+     * ADR-012: an operational failure of the login is an error, a selected
+     * refusal is a warning, any other outcome is recorded nowhere, and each
+     * record carries the fixed reason and nothing else.
+     */
+    private function assertLoggedFor(string $reason, int $times = 1): void
+    {
+        $record = match ($reason) {
+            OpenIdConnectFailure::CONFIGURATION,
+            OpenIdConnectFailure::PROVIDER_METADATA,
+            OpenIdConnectFailure::TOKEN_EXCHANGE => ['level' => 'error', 'message' => 'OpenID Connect authentication could not be performed.'],
+            OpenIdConnectFailure::STATE_MISMATCH,
+            OpenIdConnectFailure::ID_TOKEN,
+            OpenIdConnectFailure::IDENTITY_CLAIMS,
+            self::UNRESOLVED_EXTERNAL_IDENTITY => ['level' => 'warning', 'message' => 'OpenID Connect authentication was refused.'],
+            default => null,
+        };
+
+        $this->assertSame(
+            $record === null ? [] : array_fill(0, $times, $record + ['context' => ['reason' => $reason]]),
+            $this->logged
+        );
     }
 
     private function assertAuthenticationFailed(TestResponse $response): void

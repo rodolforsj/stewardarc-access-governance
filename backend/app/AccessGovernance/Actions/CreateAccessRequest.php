@@ -10,6 +10,7 @@ use App\AccessGovernance\Exceptions\AccessRequestRuleViolation;
 use App\Models\AccessProfile;
 use App\Models\AccessRequest;
 use App\Models\GrantedAccess;
+use App\Observability\OperationContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,9 @@ use InvalidArgumentException;
  */
 final class CreateAccessRequest
 {
+    /** This operation in operational records (ADR-012). */
+    private const OPERATION = 'access_request.create';
+
     private const PROCESSING_STATES = ['S1', 'S2', 'S3'];
 
     private const INITIAL_STATE = 'S1';
@@ -51,7 +55,7 @@ final class CreateAccessRequest
             );
         }
 
-        return DB::transaction(function () use (
+        return OperationContext::run(self::OPERATION, fn (): AccessRequest => DB::transaction(function () use (
             $requesterActorReferenceId,
             $accessProfileId,
             $justification,
@@ -94,7 +98,7 @@ final class CreateAccessRequest
             $request->save();
 
             return $request;
-        });
+        }));
     }
 
     /**

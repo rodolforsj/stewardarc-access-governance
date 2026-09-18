@@ -9,6 +9,7 @@ use App\AccessGovernance\Concurrency\Rn03AdvisoryLock;
 use App\AccessGovernance\Exceptions\RevocationConfirmationViolation;
 use App\Models\GrantedAccess;
 use App\Models\RevocationConfirmation;
+use App\Observability\OperationContext;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,6 +19,9 @@ use Illuminate\Support\Facades\DB;
  */
 final class RecordExternalAccessRevocation
 {
+    /** This operation in operational records (ADR-012). */
+    private const OPERATION = 'access_revocation.record';
+
     public function __construct(
         private readonly Rn03AdvisoryLock $rn03Lock = new Rn03AdvisoryLock(),
         private readonly FunctionalTransactionTime $transactionTime = new FunctionalTransactionTime(),
@@ -30,7 +34,10 @@ final class RecordExternalAccessRevocation
      */
     public function execute(string $grantedAccessId, string $actorReferenceId): RevocationConfirmation
     {
-        return DB::transaction(function () use ($grantedAccessId, $actorReferenceId): RevocationConfirmation {
+        return OperationContext::run(self::OPERATION, fn (): RevocationConfirmation => DB::transaction(function () use (
+            $grantedAccessId,
+            $actorReferenceId,
+        ): RevocationConfirmation {
             // Structural pre-read, used only to derive the RN03 advisory key:
             // Granted Access → Grant Confirmation → Access Request.
             $structural = GrantedAccess::query()->findOrFail($grantedAccessId);
@@ -70,7 +77,7 @@ final class RecordExternalAccessRevocation
             $confirmation->save();
 
             return $confirmation;
-        });
+        }));
     }
 
     /**
