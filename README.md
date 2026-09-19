@@ -35,7 +35,7 @@ StewardArc governs the decision and the record of access. It is **not** an IAM p
 - **Approval ≠ grant, with explicit lifecycles.** An Access Request moves through a persisted lifecycle (`S1`–`S5`); only a confirmed external grant creates a Granted Access, whose state (`A1`–`A3`) is derived from preserved facts, its effective validity and time, with no scheduler.
 - **Consistency under concurrency in PostgreSQL.** A transaction-level advisory lock serializes the duplicate rule (`RN03`), row locks protect lifecycle transitions, a unique partial index is the structural second line of defense, and concurrency tests run against real PostgreSQL.
 - **OpenID Connect with a server-side session.** The backend is a confidential client using PKCE, identity provider tokens are neither kept nor handed to the browser, and every `/api` route is protected by default and takes the actor from the session only.
-- **Correlated, minimized observability.** Each execution carries an opaque identifier and an operation name, an unexpected failure is recorded once with a sanitized condition, and records keep to the allow-list of [ADR-012](docs/architecture/adr/0012-operational-observability-baseline.md).
+- **Correlated, minimized observability.** Each execution carries an opaque identifier and an operation name, an unexpected failure is recorded once, operational records stay within the allow-list of [ADR-012](docs/architecture/adr/0012-operational-observability-baseline.md), and database failures are explicitly sanitized.
 
 ## Scope at a glance
 
