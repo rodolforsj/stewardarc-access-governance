@@ -3,8 +3,8 @@ function App() {
     <main>
       <h1>StewardArc</h1>
       <p>
-        Executable foundation established. No product functionality has been
-        implemented yet.
+        The backend implements the access-governance lifecycle and its first
+        protected API. A product user interface has not been implemented yet.
       </p>
     </main>
   )

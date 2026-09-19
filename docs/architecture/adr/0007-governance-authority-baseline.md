@@ -104,7 +104,7 @@ Benefits:
 
 Trade-offs:
 
-- The domain model gains a ninth table.
+- The data model gains a ninth table.
 - Authority management still depends on provisioning outside the product UI.
 - The membership expresses only current authority.
 - The temporal history of a membership is not modeled.
